@@ -1,0 +1,9 @@
+{
+  "short_name": "Secret Hitler",
+  "name": "Secret Hitler — Edizione da Tavolo",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#262322",
+  "theme_color": "#D74A31",
+  "orientation": "landscape"
+}
