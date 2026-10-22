@@ -90,6 +90,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       prevVotesRef.current = currentMap;
     } else {
       if (prevPhaseRef.current === 'ELECTION_VOTE') {
+        for (const p of publicState.players) {
+          if (p.isAlive && p.lastVote && prevVotesRef.current[p.id] !== p.lastVote) {
+            enactmentAudio.playVoteSound(p.lastVote);
+            break;
+          }
+        }
         const alive = publicState.players.filter(p => p.isAlive);
         const jaTotal = alive.filter(p => p.lastVote === 'JA').length;
         const neinTotal = alive.filter(p => p.lastVote === 'NEIN').length;
@@ -97,14 +103,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           .slice(0, 3)
           .some(l => l.text.startsWith('NEIN! Governo'));
         if ((jaTotal + neinTotal > 0 && jaTotal <= neinTotal) || rejectedByLogs) {
-          enactmentAudio.playGovernmentRejectedSound();
-        } else {
-          for (const p of publicState.players) {
-            if (p.isAlive && p.lastVote && prevVotesRef.current[p.id] !== p.lastVote) {
-              enactmentAudio.playVoteSound(p.lastVote);
-              break;
-            }
-          }
+          enactmentAudio.playChaosTrackerAdvanceSound(0.35);
         }
       }
       prevVotesRef.current = currentMap;

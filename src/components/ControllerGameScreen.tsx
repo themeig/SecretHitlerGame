@@ -399,9 +399,7 @@ export const ControllerGameScreen: React.FC<ControllerGameScreenProps> = ({ stat
                   const isFinalVoter = votesCastCount + 1 >= totalVoters;
                   enactmentAudio.playVoteSound('JA');
                   if (isFinalVoter && existingJa + 1 <= existingNein) {
-                    setTimeout(() => {
-                      enactmentAudio.playGovernmentRejectedSound();
-                    }, 280);
+                    enactmentAudio.playChaosTrackerAdvanceSound(0.35);
                   }
                   onAction({ type: 'CAST_VOTE', playerId: currentVoter.id, vote: 'JA' });
                 }}
@@ -414,10 +412,9 @@ export const ControllerGameScreen: React.FC<ControllerGameScreenProps> = ({ stat
                   const existingJa = existingVotes.filter(v => v === 'JA').length;
                   const existingNein = existingVotes.filter(v => v === 'NEIN').length;
                   const isFinalVoter = votesCastCount + 1 >= totalVoters;
+                  enactmentAudio.playVoteSound('NEIN');
                   if (isFinalVoter && existingJa <= existingNein + 1) {
-                    enactmentAudio.playGovernmentRejectedSound();
-                  } else {
-                    enactmentAudio.playVoteSound('NEIN');
+                    enactmentAudio.playChaosTrackerAdvanceSound(0.35);
                   }
                   onAction({ type: 'CAST_VOTE', playerId: currentVoter.id, vote: 'NEIN' });
                 }}

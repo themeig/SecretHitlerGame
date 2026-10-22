@@ -153,10 +153,9 @@ class EnactmentAudioManager {
     }
   }
 
-  // Repeated shouted "NEIN! NEIN! NEIN!" sound effect when a government is rejected
+  // Sound effect when a government is rejected: plays only the Chaos Tracker token advance sound (no repeated "nein nein nein")
   public playGovernmentRejectedSound() {
-    this.playPreloadedSfx('nein_shout', 1.0);
-    this.playChaosTrackerAdvanceSound(0.45);
+    this.playChaosTrackerAdvanceSound(0.35);
   }
 
   // Heavy wooden/brass tracker token sliding and slamming onto the next Chaos Tracker slot (+1)
