@@ -223,6 +223,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         display: 'flex',
         flexDirection: 'column',
         gap: compact ? '6px' : '10px',
+        ...(isTvMode
+          ? {
+              backgroundColor: 'rgba(58, 149, 176, 0.82)',
+              backdropFilter: 'blur(3px)',
+            }
+          : {}),
       }}
     >
       {/* Liberal Header + Election Tracker inline */}
@@ -500,6 +506,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         display: 'flex',
         flexDirection: 'column',
         gap: compact ? '6px' : '8px',
+        ...(isTvMode
+          ? {
+              backgroundColor: 'rgba(215, 74, 49, 0.82)',
+              backdropFilter: 'blur(3px)',
+            }
+          : {}),
       }}
     >
       <div
@@ -894,7 +906,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     return (
       <div
         style={{
-          background: '#3B3634',
+          background: isTvMode ? 'rgba(38, 35, 34, 0.82)' : '#3B3634',
+          backdropFilter: isTvMode ? 'blur(3px)' : undefined,
           border: '2px solid #F5EFE1',
           borderRadius: '10px',
           padding: '8px 10px',
@@ -1093,8 +1106,49 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         gap: isFullscreen ? '6px' : '8px',
         flex: 1,
         justifyContent: isFullscreen ? 'space-between' : 'flex-start',
+        position: 'relative',
+        zIndex: 1,
       }}
     >
+      {/* Silent Black & White WWII Archival Background Video in TV Mode */}
+      {isTvMode && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: -1,
+            pointerEvents: 'none',
+            overflow: 'hidden',
+            backgroundColor: '#0D0C0B',
+          }}
+        >
+          <video
+            src="/video/ww2_tv_bg.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              filter: 'grayscale(100%) contrast(1.22) brightness(0.68)',
+              opacity: 0.62,
+            }}
+          />
+          {/* Vintage newsreel vignette & scanline overlay */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background:
+                'radial-gradient(circle at center, rgba(18, 16, 15, 0.25) 0%, rgba(12, 11, 10, 0.78) 100%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 1px, transparent 1px, transparent 3px)',
+            }}
+          />
+        </div>
+      )}
+
       {/* Horizontal Top Bar: Screen Switcher (Tel 1, Tel 2, TV Mode, Fullscreen) + Live Phase Banner */}
       <div
         style={{

@@ -411,6 +411,8 @@ export const App: React.FC = () => {
         margin: '0 auto',
         padding: isFullscreen ? '4px 6px' : '6px 12px 14px',
         gap: isFullscreen ? '4px' : '8px',
+        position: 'relative',
+        zIndex: 1,
       }}
     >
       {/* Sleek Horizontal Top Header (hidden in Fullscreen mode on Fixed Phones so the board fills 100% of screen) */}
