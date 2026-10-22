@@ -136,7 +136,7 @@ export const PolicyTileArt: React.FC<{
         border: `3px solid ${selected ? '#E6AF2E' : '#F5EFE1'}`,
         boxShadow: selected ? '0 0 0 3px #E6AF2E, 4px 5px 0 #000' : `3px 4px 0 ${border}`,
         borderRadius: '8px',
-        padding: compact ? '8px 6px' : '12px 10px',
+        padding: compact ? '6px 5px' : '12px 10px',
         color: '#F5EFE1',
         textAlign: 'center',
         cursor: onClick ? 'pointer' : 'default',
@@ -144,6 +144,10 @@ export const PolicyTileArt: React.FC<{
         transition: 'transform 0.12s ease',
         transform: selected ? 'translateY(-4px)' : 'none',
         userSelect: 'none',
+        height: compact ? '100%' : undefined,
+        display: compact ? 'flex' : undefined,
+        flexDirection: compact ? 'column' : undefined,
+        justifyContent: compact ? 'center' : undefined,
       }}
     >
       {/* Inner document border with dog-ear corner */}
@@ -155,6 +159,8 @@ export const PolicyTileArt: React.FC<{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
+          justifyContent: 'center',
+          flex: compact ? 1 : undefined,
           gap: compact ? '3px' : '6px',
         }}
       >

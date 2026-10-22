@@ -395,9 +395,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: compact ? '92px 1fr 92px' : '125px 1fr 125px',
-          gap: compact ? '6px' : '8px',
+          gridTemplateColumns: compact ? '68px 1fr 68px' : '105px 1fr 105px',
+          gap: compact ? '5px' : '8px',
           alignItems: 'stretch',
+          flex: 1,
         }}
       >
         {/* Left Stack: DRAW PILE */}
@@ -406,20 +407,22 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             background: '#153E4B',
             border: '2.5px solid #F5EFE1',
             borderRadius: '8px',
-            padding: compact ? '4px' : '8px 6px',
+            padding: compact ? '4px 3px' : '8px 6px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             textAlign: 'center',
             boxShadow: '2px 2px 0 #000',
+            minHeight: compact ? '118px' : '132px',
           }}
         >
           <div
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: compact ? '0.82rem' : '1rem',
-              letterSpacing: '1px',
+              fontSize: compact ? '0.74rem' : '1rem',
+              letterSpacing: '0.8px',
+              lineHeight: 1.05,
               color: '#E6AF2E',
             }}
           >
@@ -430,12 +433,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               background: '#F5EFE1',
               color: '#262322',
               fontFamily: 'var(--font-display)',
-              fontSize: compact ? '1.55rem' : '2.2rem',
+              fontSize: compact ? '1.45rem' : '2.2rem',
               lineHeight: 1,
-              padding: compact ? '3px 10px' : '6px 14px',
+              padding: compact ? '3px 8px' : '6px 14px',
               borderRadius: '5px',
               border: '2px solid #262322',
-              marginTop: '2px',
+              marginTop: '4px',
             }}
           >
             {publicState.drawPileCount}
@@ -447,7 +450,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(5, 1fr)',
-            gap: compact ? '4px' : '6px',
+            gap: compact ? '5px' : '6px',
+            alignItems: 'stretch',
           }}
         >
           {[0, 1, 2, 3, 4].map(slotIdx => {
@@ -457,7 +461,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               <div
                 key={slotIdx}
                 style={{
-                  minHeight: compact ? '72px' : '112px',
+                  minHeight: compact ? '118px' : '132px',
+                  height: '100%',
                   borderRadius: '6px',
                   border: isWinSlot
                     ? '2px solid #F5EFE1'
@@ -467,22 +472,22 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  padding: isEnacted ? '0' : '3px',
+                  padding: isEnacted ? '0' : '4px',
                 }}
               >
                 {isEnacted ? (
-                  <div style={{ width: '100%' }}>
+                  <div style={{ width: '100%', height: '100%' }}>
                     <PolicyTileArt type="LIBERAL" compact />
                   </div>
                 ) : isWinSlot ? (
                   <>
-                    <LiberalDoveEmblem size={compact ? 26 : 42} />
+                    <LiberalDoveEmblem size={compact ? 30 : 42} />
                     <span
                       style={{
                         fontFamily: 'var(--font-display)',
-                        fontSize: compact ? '0.68rem' : '0.82rem',
+                        fontSize: compact ? '0.72rem' : '0.82rem',
                         letterSpacing: '0.8px',
-                        marginTop: '2px',
+                        marginTop: '4px',
                       }}
                     >
                       5°=VITTORIA
@@ -492,8 +497,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                   <span
                     style={{
                       fontFamily: 'var(--font-display)',
-                      fontSize: compact ? '1.05rem' : '1.35rem',
-                      opacity: 0.45,
+                      fontSize: compact ? '1.25rem' : '1.45rem',
+                      opacity: 0.5,
                     }}
                   >
                     {slotIdx + 1}
@@ -510,20 +515,22 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             background: '#262322',
             border: '2.5px solid #F5EFE1',
             borderRadius: '8px',
-            padding: compact ? '4px' : '8px 6px',
+            padding: compact ? '4px 3px' : '8px 6px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             textAlign: 'center',
             boxShadow: '2px 2px 0 #000',
+            minHeight: compact ? '118px' : '132px',
           }}
         >
           <div
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: compact ? '0.82rem' : '1rem',
-              letterSpacing: '1px',
+              fontSize: compact ? '0.74rem' : '1rem',
+              letterSpacing: '0.8px',
+              lineHeight: 1.05,
               color: '#E5DCC8',
             }}
           >
@@ -534,12 +541,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               background: '#3B3634',
               color: '#F5EFE1',
               fontFamily: 'var(--font-display)',
-              fontSize: compact ? '1.55rem' : '2.2rem',
+              fontSize: compact ? '1.45rem' : '2.2rem',
               lineHeight: 1,
-              padding: compact ? '3px 10px' : '6px 14px',
+              padding: compact ? '3px 8px' : '6px 14px',
               borderRadius: '5px',
               border: '2px solid #F5EFE1',
-              marginTop: '2px',
+              marginTop: '4px',
             }}
           >
             {publicState.discardPileCount}
@@ -582,10 +589,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       className="sh-fascist-card"
       style={{
         borderRadius: '10px',
-        padding: compact ? '8px 10px' : '10px 12px',
+        padding: compact ? '8px 10px' : '12px',
         display: 'flex',
         flexDirection: 'column',
-        gap: compact ? '6px' : '8px',
+        gap: compact ? '6px' : '10px',
         ...(isTvMode
           ? {
               backgroundColor: 'rgba(215, 74, 49, 0.82)',
@@ -600,17 +607,17 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           justifyContent: 'space-between',
           alignItems: 'center',
           borderBottom: '2px solid rgba(245,239,225,0.4)',
-          paddingBottom: compact ? '3px' : '4px',
+          paddingBottom: compact ? '4px' : '6px',
           flexWrap: 'wrap',
           gap: '6px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <FascistSkullEmblem size={compact ? 22 : 28} />
+          <FascistSkullEmblem size={compact ? 22 : 30} />
           <span
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: compact ? '1.25rem' : '1.6rem',
+              fontSize: compact ? '1.25rem' : '1.65rem',
               letterSpacing: '2px',
               lineHeight: 1,
             }}
@@ -623,10 +630,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           style={{
             background: publicState.fascistPolicies >= 3 ? '#E6AF2E' : '#5B140C',
             color: publicState.fascistPolicies >= 3 ? '#262322' : '#F5EFE1',
-            fontSize: compact ? '0.64rem' : '0.72rem',
+            fontSize: compact ? '0.68rem' : '0.76rem',
             fontWeight: 900,
-            padding: '2px 8px',
-            borderRadius: '4px',
+            padding: compact ? '3px 8px' : '4px 10px',
+            borderRadius: '5px',
             letterSpacing: '0.5px',
           }}
         >
@@ -641,7 +648,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(6, 1fr)',
-          gap: compact ? '4px' : '6px',
+          gap: compact ? '5px' : '6px',
+          alignItems: 'stretch',
+          flex: 1,
         }}
       >
         {[0, 1, 2, 3, 4, 5].map(slotIdx => {
@@ -655,7 +664,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             <div
               key={slotIdx}
               style={{
-                minHeight: compact ? '72px' : '100px',
+                minHeight: compact ? '118px' : '132px',
+                height: '100%',
                 borderRadius: '6px',
                 border: isHitlerZone
                   ? '2px solid #E6AF2E'
@@ -669,12 +679,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: isEnacted ? '0' : compact ? '3px 2px' : '6px 4px',
+                padding: isEnacted ? '0' : compact ? '4px 3px' : '6px 4px',
                 textAlign: 'center',
               }}
             >
               {isEnacted ? (
-                <div style={{ width: '100%' }}>
+                <div style={{ width: '100%', height: '100%' }}>
                   <PolicyTileArt type="FASCIST" compact />
                 </div>
               ) : isWinSlot ? (
