@@ -5,6 +5,7 @@ import { FascistSkullEmblem, LiberalDoveEmblem } from './artwork/SecretHitlerArt
 interface GameOverScreenProps {
   publicState: PublicBoardState;
   onAction?: (action: GameAction) => void;
+  onOpenLeaderboard?: () => void;
 }
 
 interface PlayerMatchStats {
@@ -29,7 +30,11 @@ interface PlayerMatchStats {
   awardDesc: string;
 }
 
-export const GameOverScreen: React.FC<GameOverScreenProps> = ({ publicState, onAction }) => {
+export const GameOverScreen: React.FC<GameOverScreenProps> = ({
+  publicState,
+  onAction,
+  onOpenLeaderboard,
+}) => {
   const [viewMode, setViewMode] = useState<'STAR_WARS' | 'STATIC_TABLE'>('STAR_WARS');
   const [isPaused, setIsPaused] = useState(false);
   const [fastSpeed, setFastSpeed] = useState(false);
@@ -413,6 +418,24 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ publicState, onA
           >
             {viewMode === 'STAR_WARS' ? '📊 Vista Scheda Fissa' : '🌌 Vista Star Wars 3D'}
           </button>
+          {onOpenLeaderboard && (
+            <button
+              type="button"
+              onClick={onOpenLeaderboard}
+              style={{
+                background: '#262322',
+                color: '#E6AF2E',
+                border: '2px solid #E6AF2E',
+                borderRadius: '6px',
+                padding: '5px 12px',
+                fontSize: '0.8rem',
+                fontWeight: 900,
+                cursor: 'pointer',
+              }}
+            >
+              🏆 Classifica Globale
+            </button>
+          )}
         </div>
       </div>
 

@@ -331,7 +331,16 @@ export const ControllerGameScreen: React.FC<ControllerGameScreenProps> = ({ stat
                 vote="JA"
                 subtitle={`VOTA SÌ (${currentVoter.name})`}
                 onClick={() => {
+                  const existingVotes = Object.values(state.currentVotes);
+                  const existingJa = existingVotes.filter(v => v === 'JA').length;
+                  const existingNein = existingVotes.filter(v => v === 'NEIN').length;
+                  const isFinalVoter = votesCastCount + 1 >= totalVoters;
                   enactmentAudio.playVoteSound('JA');
+                  if (isFinalVoter && existingJa + 1 <= existingNein) {
+                    setTimeout(() => {
+                      enactmentAudio.playGovernmentRejectedSound();
+                    }, 280);
+                  }
                   onAction({ type: 'CAST_VOTE', playerId: currentVoter.id, vote: 'JA' });
                 }}
               />
@@ -339,7 +348,15 @@ export const ControllerGameScreen: React.FC<ControllerGameScreenProps> = ({ stat
                 vote="NEIN"
                 subtitle={`VOTA NO (${currentVoter.name})`}
                 onClick={() => {
-                  enactmentAudio.playVoteSound('NEIN');
+                  const existingVotes = Object.values(state.currentVotes);
+                  const existingJa = existingVotes.filter(v => v === 'JA').length;
+                  const existingNein = existingVotes.filter(v => v === 'NEIN').length;
+                  const isFinalVoter = votesCastCount + 1 >= totalVoters;
+                  if (isFinalVoter && existingJa <= existingNein + 1) {
+                    enactmentAudio.playGovernmentRejectedSound();
+                  } else {
+                    enactmentAudio.playVoteSound('NEIN');
+                  }
                   onAction({ type: 'CAST_VOTE', playerId: currentVoter.id, vote: 'NEIN' });
                 }}
               />

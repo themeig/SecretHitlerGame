@@ -153,6 +153,11 @@ class EnactmentAudioManager {
     }
   }
 
+  // Repeated shouted "NEIN! NEIN! NEIN!" sound effect when a government is rejected
+  public playGovernmentRejectedSound() {
+    this.playPreloadedSfx('nein_shout', 1.0);
+  }
+
   // Single card slide + crisp corner snap on table felt
   public playSingleCardSlide(delaySec: number = 0) {
     const ctx = this.getContext();

@@ -16,8 +16,10 @@ import { ControllerGameScreen } from './components/ControllerGameScreen';
 import { BoardScreenTab, GameBoard } from './components/GameBoard';
 import { GameOverScreen } from './components/GameOverScreen';
 import { LogModal, RulesModal } from './components/RulesAndLogModals';
+import { LeaderboardModal } from './components/LeaderboardModal';
 import { backgroundMusic } from './utils/backgroundMusic';
 import { enactmentAudio } from './utils/enactmentAudio';
+import { globalLeaderboard } from './utils/globalLeaderboard';
 
 const STORAGE_KEY_STATE = 'secret_hitler_game_state_v1';
 const STORAGE_KEY_ROOM = 'secret_hitler_room_code_v1';
@@ -247,6 +249,7 @@ export const App: React.FC = () => {
 
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showLogModal, setShowLogModal] = useState(false);
+  const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
   const [showBoardOnController, setShowBoardOnController] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [musicEnabled, setMusicEnabled] = useState(() => backgroundMusic.getEnabled());
@@ -373,7 +376,10 @@ export const App: React.FC = () => {
       activePublicState.fascistPolicies,
       activePublicState.winner
     );
-  }, [activePublicState.phase, activePublicState.fascistPolicies, activePublicState.winner]);
+    if (activePublicState.phase === 'GAME_OVER') {
+      globalLeaderboard.recordFinishedMatch(activePublicState);
+    }
+  }, [activePublicState]);
 
   const initialBoardTab: BoardScreenTab =
     mode === 'BOARD_TV'
@@ -395,6 +401,11 @@ export const App: React.FC = () => {
             setMode(chosenMode);
           }}
           onRegenerateRoom={() => setRoomCode(generateRoomCode())}
+          onOpenLeaderboard={() => setShowLeaderboardModal(true)}
+        />
+        <LeaderboardModal
+          open={showLeaderboardModal}
+          onClose={() => setShowLeaderboardModal(false)}
         />
       </div>
     );
@@ -532,6 +543,20 @@ export const App: React.FC = () => {
             <button
               type="button"
               className="sh-btn-ink"
+              style={{
+                fontSize: '0.78rem',
+                padding: '4px 8px',
+                borderColor: '#E6AF2E',
+                color: '#E6AF2E',
+              }}
+              onClick={() => setShowLeaderboardModal(true)}
+              title="Classifica Globale di tutti i giocatori"
+            >
+              🏆 Classifica
+            </button>
+            <button
+              type="button"
+              className="sh-btn-ink"
               style={{ fontSize: '0.78rem', padding: '4px 8px' }}
               onClick={() => setShowLogModal(true)}
             >
@@ -564,7 +589,11 @@ export const App: React.FC = () => {
         {isBoard && (
           <>
             {activePublicState.phase === 'GAME_OVER' && (
-              <GameOverScreen publicState={activePublicState} onAction={triggerAction} />
+              <GameOverScreen
+                publicState={activePublicState}
+                onAction={triggerAction}
+                onOpenLeaderboard={() => setShowLeaderboardModal(true)}
+              />
             )}
             <GameBoard
               publicState={activePublicState}
@@ -600,7 +629,11 @@ export const App: React.FC = () => {
               )}
 
             {gameState.phase === 'GAME_OVER' && (
-              <GameOverScreen publicState={localPublicState} onAction={handleDispatch} />
+              <GameOverScreen
+                publicState={localPublicState}
+                onAction={handleDispatch}
+                onOpenLeaderboard={() => setShowLeaderboardModal(true)}
+              />
             )}
 
             {(mode === 'SINGLE' || showBoardOnController) &&
@@ -649,6 +682,10 @@ export const App: React.FC = () => {
         open={showLogModal}
         logs={activePublicState.logs}
         onClose={() => setShowLogModal(false)}
+      />
+      <LeaderboardModal
+        open={showLeaderboardModal}
+        onClose={() => setShowLeaderboardModal(false)}
       />
     </div>
   );

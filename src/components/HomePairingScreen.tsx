@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { SecretHitlerLogo } from './artwork/SecretHitlerArt';
 import { buildShareUrl, DeviceMode, normalizeRoomCode } from '../sync/syncManager';
+import { globalLeaderboard, GlobalPlayerStats } from '../utils/globalLeaderboard';
 
 interface HomePairingScreenProps {
   roomCode: string;
   lanAddresses: string[];
   onSelectMode: (mode: DeviceMode, roomCode: string) => void;
   onRegenerateRoom: () => void;
+  onOpenLeaderboard: () => void;
 }
 
 export const HomePairingScreen: React.FC<HomePairingScreenProps> = ({
@@ -15,12 +17,22 @@ export const HomePairingScreen: React.FC<HomePairingScreenProps> = ({
   lanAddresses,
   onSelectMode,
   onRegenerateRoom,
+  onOpenLeaderboard,
 }) => {
   const [joinCode, setJoinCode] = useState(roomCode);
   const [selectedHostIpIndex, setSelectedHostIpIndex] = useState(0);
   const [qrTarget, setQrTarget] = useState<
     'BOARD_LIBERAL' | 'BOARD_FASCIST' | 'BOARD_TV' | 'CONTROLLER'
   >('BOARD_LIBERAL');
+  const [topPlayers, setTopPlayers] = useState<GlobalPlayerStats[]>(() =>
+    globalLeaderboard.getGlobalPlayerStats()
+  );
+
+  useEffect(() => {
+    const refresh = () => setTopPlayers(globalLeaderboard.getGlobalPlayerStats());
+    refresh();
+    return globalLeaderboard.subscribe(refresh);
+  }, []);
 
   const origin =
     typeof window !== 'undefined'
@@ -75,14 +87,30 @@ export const HomePairingScreen: React.FC<HomePairingScreenProps> = ({
           </div>
         </div>
 
-        <button
-          type="button"
-          className="sh-btn-ink"
-          style={{ fontSize: '0.85rem', padding: '6px 12px' }}
-          onClick={() => onSelectMode('SINGLE', normalizeRoomCode(joinCode) || roomCode)}
-        >
-          ☝️ Gioca con 1 Solo Telefono
-        </button>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="sh-btn-ink"
+            style={{
+              fontSize: '0.88rem',
+              padding: '6px 14px',
+              borderColor: '#E6AF2E',
+              color: '#E6AF2E',
+              background: '#262322',
+            }}
+            onClick={onOpenLeaderboard}
+          >
+            🏆 CLASSIFICA ({topPlayers.length})
+          </button>
+          <button
+            type="button"
+            className="sh-btn-ink"
+            style={{ fontSize: '0.85rem', padding: '6px 12px' }}
+            onClick={() => onSelectMode('SINGLE', normalizeRoomCode(joinCode) || roomCode)}
+          >
+            ☝️ Gioca con 1 Solo Telefono
+          </button>
+        </div>
       </div>
 
       {/* Main Horizontal Split: Left = Room Code & Role Buttons, Right = QR Code */}
@@ -393,6 +421,123 @@ export const HomePairingScreen: React.FC<HomePairingScreenProps> = ({
             istantanea tra tutti i telefoni collegati!
           </div>
         </div>
+      </div>
+
+      {/* Dedicated CLASSIFICA Section on the Home Screen */}
+      <div
+        className="sh-paper"
+        style={{
+          borderRadius: '12px',
+          padding: '12px 14px',
+          background: '#262322',
+          color: '#F5EFE1',
+          border: '2.5px solid #E6AF2E',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '8px',
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: '1.45rem',
+                letterSpacing: '1.5px',
+                color: '#E6AF2E',
+                lineHeight: 1.05,
+              }}
+            >
+              🏆 CLASSIFICA GLOBALE &amp; STATISTICHE GIOCATORI
+            </div>
+            <div style={{ fontSize: '0.74rem', color: '#E5DCC8' }}>
+              Classifica storica di tutte le persone che hanno mai giocato (vittorie, ruoli, leggi promulgate, voti ed esecuzioni)
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="sh-btn-primary"
+            style={{
+              background: '#E6AF2E',
+              color: '#1C1918',
+              borderColor: '#F5EFE1',
+              fontSize: '0.95rem',
+              padding: '6px 14px',
+            }}
+            onClick={onOpenLeaderboard}
+          >
+            🏆 APRI CLASSIFICA COMPLETA ({topPlayers.length} GIOCATORI)
+          </button>
+        </div>
+
+        {topPlayers.length > 0 && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '8px',
+            }}
+          >
+            {topPlayers.slice(0, 4).map((p, idx) => {
+              const medals = ['🥇 1°', '🥈 2°', '🥉 3°', '🏅 4°'];
+              return (
+                <div
+                  key={p.key}
+                  onClick={onOpenLeaderboard}
+                  style={{
+                    cursor: 'pointer',
+                    background: '#1C1918',
+                    border: `1.5px solid ${idx === 0 ? '#E6AF2E' : '#3B3634'}`,
+                    borderRadius: '8px',
+                    padding: '8px 10px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-display)',
+                        fontSize: '1.15rem',
+                        letterSpacing: '1px',
+                        color: '#F5EFE1',
+                      }}
+                    >
+                      {medals[idx]} {p.name}
+                    </div>
+                    <div style={{ fontSize: '0.68rem', color: '#E5DCC8' }}>
+                      {p.wins}V / {p.matchesPlayed}P ({p.winRate}%) &bull; 🕊️{p.liberalWins} 💀
+                      {p.fascistWins + p.hitlerWins}
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      background: '#E6AF2E',
+                      color: '#1C1918',
+                      fontWeight: 900,
+                      fontSize: '0.75rem',
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                    }}
+                  >
+                    {p.ratingPoints} PT
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
