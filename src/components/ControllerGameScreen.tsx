@@ -556,7 +556,13 @@ export const ControllerGameScreen: React.FC<ControllerGameScreenProps> = ({ stat
                   key={idx}
                   type={pol}
                   selected={selectedCardIdx === idx}
-                  badgeText={selectedCardIdx === idx ? '❌ DA SCARTARE' : 'PASSA AL CANC.'}
+                  badgeText={
+                    selectedCardIdx === null
+                      ? '👆 TOCCA PER SCARTARE'
+                      : selectedCardIdx === idx
+                      ? '❌ DA SCARTARE'
+                      : '➡️ PASSA AL CANC.'
+                  }
                   onClick={() => setSelectedCardIdx(idx)}
                 />
               ))}
@@ -672,7 +678,11 @@ export const ControllerGameScreen: React.FC<ControllerGameScreenProps> = ({ stat
                   key={idx}
                   type={pol}
                   selected={selectedCardIdx === idx}
-                  badgeText={selectedCardIdx === idx ? '✅ PROMULGA QUESTA' : 'SCARTA'}
+                  badgeText={
+                    selectedCardIdx === idx
+                      ? '✅ PROMULGA QUESTA LEGGE'
+                      : '👆 TOCCA PER PROMULGARE'
+                  }
                   onClick={() => setSelectedCardIdx(idx)}
                 />
               ))}
