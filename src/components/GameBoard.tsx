@@ -135,6 +135,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   const isFascistPhoneFullScreenVote = activeTab === 'FASCIST_PLAYERS' && isVotingPhase;
 
   const [dismissedEnactmentId, setDismissedEnactmentId] = useState<string | null>(null);
+  const [dismissedRejectionId, setDismissedRejectionId] = useState<string | null>(null);
+  const [chaosOverlayAnimTarget, setChaosOverlayAnimTarget] = useState<boolean>(false);
 
   const activeEnactment =
     publicState.lastEnactedPolicy &&
@@ -142,6 +144,52 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     Date.now() - (publicState.lastEnactedPolicy.timestamp ?? 0) < 18000
       ? publicState.lastEnactedPolicy
       : null;
+
+  // Detect latest Government Rejected / Chaos Tracker +1 event from logs
+  const latestRejectionLog = publicState.logs
+    .slice(0, 3)
+    .find(l => /Contatore Elezioni:\s*[123]\/3/.test(l.text));
+
+  const activeRejection = (() => {
+    if (!latestRejectionLog) return null;
+    if (latestRejectionLog.id === dismissedRejectionId) return null;
+    if (Date.now() - latestRejectionLog.timestamp > 8000) return null;
+    const m = latestRejectionLog.text.match(/Contatore Elezioni:\s*([123])\/3/);
+    if (!m) return null;
+    const toStep = Number(m[1]);
+    const fromStep = Math.max(0, toStep - 1);
+    const govMatch = latestRejectionLog.text.match(/Governo \((.+?)\) bocciato/);
+    const isVeto = latestRejectionLog.text.includes('ACCETTATO il Veto');
+    return {
+      id: latestRejectionLog.id,
+      fromStep,
+      toStep,
+      govPair: govMatch ? govMatch[1] : null,
+      isVeto,
+      text: latestRejectionLog.text,
+    };
+  })();
+
+  useEffect(() => {
+    if (!activeRejection) {
+      setChaosOverlayAnimTarget(false);
+      return;
+    }
+    setChaosOverlayAnimTarget(false);
+    const tStep = setTimeout(() => {
+      setChaosOverlayAnimTarget(true);
+    }, 360);
+    const tClose = setTimeout(
+      () => {
+        setDismissedRejectionId(activeRejection.id);
+      },
+      activeRejection.toStep === 3 ? 2500 : 3800
+    );
+    return () => {
+      clearTimeout(tStep);
+      clearTimeout(tClose);
+    };
+  }, [activeRejection?.id]);
 
   const enactmentMode: EnactmentViewMode =
     activeTab === 'LIBERAL_DECK'
@@ -278,13 +326,17 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         {/* ELECTION TRACKER */}
         <div
           style={{
-            background: 'rgba(21, 62, 75, 0.75)',
+            background: activeRejection ? 'rgba(158, 42, 28, 0.92)' : 'rgba(21, 62, 75, 0.75)',
             borderRadius: '6px',
             padding: compact ? '2px 8px' : '4px 10px',
             display: 'flex',
             alignItems: 'center',
             gap: '5px',
-            border: '1px solid rgba(245,239,225,0.5)',
+            border: activeRejection
+              ? '2px solid #E6AF2E'
+              : '1px solid rgba(245,239,225,0.5)',
+            boxShadow: activeRejection ? '0 0 14px rgba(230, 175, 46, 0.85)' : 'none',
+            transition: 'all 0.3s ease',
           }}
         >
           <span
@@ -292,16 +344,23 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               fontFamily: 'var(--font-display)',
               fontSize: compact ? '0.78rem' : '0.9rem',
               letterSpacing: '1px',
+              color: activeRejection ? '#FFE81F' : '#F5EFE1',
             }}
           >
-            ELEZIONI FALLITE:
+            {activeRejection ? '⚠️ CONTATORE CAOS (+1):' : 'ELEZIONI FALLITE:'}
           </span>
           {[0, 1, 2, 3].map(step => {
-            const active = publicState.electionTracker === step;
+            const displayedStep = activeRejection
+              ? chaosOverlayAnimTarget
+                ? activeRejection.toStep
+                : activeRejection.fromStep
+              : publicState.electionTracker;
+            const active = displayedStep === step;
             return (
               <React.Fragment key={step}>
                 <div
                   style={{
+                    position: 'relative',
                     width: step === 3 ? 'auto' : compact ? '20px' : '24px',
                     height: compact ? '20px' : '24px',
                     padding: step === 3 ? '0 6px' : '0',
@@ -318,6 +377,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                     justifyContent: 'center',
                     fontWeight: 900,
                     fontSize: compact ? '0.66rem' : '0.74rem',
+                    transform: active && activeRejection ? 'scale(1.26)' : 'scale(1)',
+                    boxShadow:
+                      active && activeRejection ? '0 0 10px rgba(255, 232, 31, 0.95)' : 'none',
+                    transition: 'all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
                   }}
                 >
                   {step === 3 ? '3=CAOS!' : step}
@@ -1466,6 +1529,229 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
           {isVotingPhase && renderFullScreenVotingBoard()}
           {renderPlayersSeatingBar()}
+        </div>
+      )}
+
+      {/* Government Rejected & Chaos Tracker +1 Animated Overlay */}
+      {activeRejection && (
+        <div
+          onClick={() => setDismissedRejectionId(activeRejection.id)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9998,
+            background: 'rgba(12, 10, 9, 0.84)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            cursor: 'pointer',
+          }}
+        >
+          <style>{`
+            @keyframes shChaosModalPop {
+              0% { transform: scale(0.86); opacity: 0; }
+              100% { transform: scale(1); opacity: 1; }
+            }
+            @keyframes shChaosPlusOneFloat {
+              0% { transform: translateY(14px) scale(0.6); opacity: 0; }
+              40% { transform: translateY(-6px) scale(1.18); opacity: 1; }
+              100% { transform: translateY(-2px) scale(1); opacity: 1; }
+            }
+            @keyframes shChaosShockwave {
+              0% { box-shadow: 0 0 0 0 rgba(230, 175, 46, 0.9); }
+              100% { box-shadow: 0 0 0 22px rgba(230, 175, 46, 0); }
+            }
+          `}</style>
+          <div
+            style={{
+              maxWidth: '640px',
+              width: '100%',
+              background: '#1C1918',
+              border: '3px solid #D74A31',
+              borderRadius: '14px',
+              padding: '20px 22px',
+              color: '#F5EFE1',
+              textAlign: 'center',
+              boxShadow: '0 18px 50px rgba(0,0,0,0.9)',
+              animation: 'shChaosModalPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+            }}
+          >
+            <div
+              style={{
+                display: 'inline-block',
+                background: '#9E2A1C',
+                color: '#FFE81F',
+                fontFamily: 'var(--font-display)',
+                fontSize: '1rem',
+                letterSpacing: '2px',
+                padding: '3px 12px',
+                borderRadius: '999px',
+                border: '1.5px solid #FFE81F',
+                marginBottom: '6px',
+              }}
+            >
+              {activeRejection.isVeto ? '🛑 VETO PRESIDENZIALE ACCETTATO' : '❌ NEIN! NEIN! NEIN!'}
+            </div>
+
+            <div
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: '2.35rem',
+                letterSpacing: '2px',
+                color: '#F5EFE1',
+                lineHeight: 1.05,
+              }}
+            >
+              {activeRejection.isVeto
+                ? 'AGENDA SCARTATA — GOVERNO FALLITO!'
+                : `GOVERNO RESPINTO${
+                    activeRejection.govPair ? ` (${activeRejection.govPair})` : '!'
+                  }`}
+            </div>
+
+            <div
+              style={{
+                fontSize: '0.9rem',
+                color: '#E6AF2E',
+                fontWeight: 800,
+                marginTop: '4px',
+                marginBottom: '16px',
+              }}
+            >
+              ⚠️ Il Contatore del Caos (Elezioni Fallite) avanza di +1!
+            </div>
+
+            {/* Animated 0 -> 1 -> 2 -> 3=CAOS! Track */}
+            <div
+              style={{
+                background: '#153E4B',
+                border: '2.5px solid #F5EFE1',
+                borderRadius: '12px',
+                padding: '22px 14px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                flexWrap: 'wrap',
+              }}
+            >
+              {[0, 1, 2, 3].map(step => {
+                const currentStep = chaosOverlayAnimTarget
+                  ? activeRejection.toStep
+                  : activeRejection.fromStep;
+                const isActive = currentStep === step;
+                const isJustReached =
+                  chaosOverlayAnimTarget && activeRejection.toStep === step;
+                const isChaosSlot = step === 3;
+
+                return (
+                  <React.Fragment key={step}>
+                    <div
+                      style={{
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                      }}
+                    >
+                      {isJustReached && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '-26px',
+                            background: isChaosSlot ? '#D74A31' : '#E6AF2E',
+                            color: isChaosSlot ? '#F5EFE1' : '#1C1918',
+                            fontFamily: 'var(--font-display)',
+                            fontSize: '0.95rem',
+                            letterSpacing: '1px',
+                            padding: '1px 9px',
+                            borderRadius: '999px',
+                            border: '2px solid #F5EFE1',
+                            fontWeight: 900,
+                            whiteSpace: 'nowrap',
+                            animation: 'shChaosPlusOneFloat 0.45s ease-out forwards',
+                          }}
+                        >
+                          +1 CAOS!
+                        </div>
+                      )}
+
+                      <div
+                        style={{
+                          width: isChaosSlot ? '106px' : '64px',
+                          height: '64px',
+                          borderRadius: '999px',
+                          background: isActive
+                            ? isChaosSlot
+                              ? '#D74A31'
+                              : '#E6AF2E'
+                            : 'rgba(245, 239, 225, 0.14)',
+                          color: isActive
+                            ? isChaosSlot
+                              ? '#F5EFE1'
+                              : '#1C1918'
+                            : '#F5EFE1',
+                          border: `3px solid ${
+                            isActive ? '#F5EFE1' : 'rgba(245, 239, 225, 0.45)'
+                          }`,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontFamily: 'var(--font-display)',
+                          fontSize: isChaosSlot ? '1.35rem' : '1.85rem',
+                          letterSpacing: '1px',
+                          transform: isActive ? 'scale(1.18)' : 'scale(0.95)',
+                          transition:
+                            'all 0.42s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                          animation: isJustReached
+                            ? 'shChaosShockwave 0.9s ease-out infinite'
+                            : 'none',
+                        }}
+                      >
+                        <span>{isChaosSlot ? '3 = CAOS!' : step}</span>
+                      </div>
+                    </div>
+
+                    {step < 3 && (
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-display)',
+                          fontSize: '1.5rem',
+                          color:
+                            chaosOverlayAnimTarget && step === activeRejection.fromStep
+                              ? '#FFE81F'
+                              : 'rgba(245,239,225,0.45)',
+                          transform:
+                            chaosOverlayAnimTarget && step === activeRejection.fromStep
+                              ? 'scale(1.3)'
+                              : 'scale(1)',
+                          transition: 'all 0.3s ease',
+                        }}
+                      >
+                        ➔
+                      </span>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+
+            <div
+              style={{
+                marginTop: '12px',
+                fontSize: '0.84rem',
+                color: activeRejection.toStep === 3 ? '#FCA5A5' : '#E5DCC8',
+                fontWeight: 700,
+              }}
+            >
+              {activeRejection.toStep === 3
+                ? '💥 3 GOVERNI FALLITI DI FILA! IL POPOLO PROMULGA LA PRIMA LEGGE DEL MAZZO!'
+                : `Contatore Elezioni Fallite: da ${activeRejection.fromStep}/3 a ${activeRejection.toStep}/3 (a 3 scatta il CAOS!)`}
+            </div>
+          </div>
         </div>
       )}
 

@@ -156,6 +156,49 @@ class EnactmentAudioManager {
   // Repeated shouted "NEIN! NEIN! NEIN!" sound effect when a government is rejected
   public playGovernmentRejectedSound() {
     this.playPreloadedSfx('nein_shout', 1.0);
+    this.playChaosTrackerAdvanceSound(0.45);
+  }
+
+  // Heavy wooden/brass tracker token sliding and slamming onto the next Chaos Tracker slot (+1)
+  public playChaosTrackerAdvanceSound(delaySec: number = 0) {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const start = ctx.currentTime + delaySec;
+
+      // Short wooden slide
+      const slideNoise = ctx.createBufferSource();
+      slideNoise.buffer = this.createWhiteNoiseBuffer(ctx, 0.14);
+      const slideFilter = ctx.createBiquadFilter();
+      slideFilter.type = 'bandpass';
+      slideFilter.frequency.setValueAtTime(800, start);
+      slideFilter.frequency.linearRampToValueAtTime(1400, start + 0.12);
+      const slideGain = ctx.createGain();
+      slideGain.gain.setValueAtTime(0.01, start);
+      slideGain.gain.linearRampToValueAtTime(0.22, start + 0.08);
+      slideGain.gain.exponentialRampToValueAtTime(0.001, start + 0.13);
+      slideNoise.connect(slideFilter);
+      slideFilter.connect(slideGain);
+      slideGain.connect(ctx.destination);
+      slideNoise.start(start);
+      slideNoise.stop(start + 0.14);
+
+      // Heavy token slam onto the new slot
+      const slamTime = start + 0.13;
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(190, slamTime);
+      osc.frequency.exponentialRampToValueAtTime(42, slamTime + 0.18);
+      const slamGain = ctx.createGain();
+      slamGain.gain.setValueAtTime(0.55, slamTime);
+      slamGain.gain.exponentialRampToValueAtTime(0.001, slamTime + 0.2);
+      osc.connect(slamGain);
+      slamGain.connect(ctx.destination);
+      osc.start(slamTime);
+      osc.stop(slamTime + 0.21);
+    } catch {
+      // safe fallback
+    }
   }
 
   // Single card slide + crisp corner snap on table felt

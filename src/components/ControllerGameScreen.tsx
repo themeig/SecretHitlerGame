@@ -120,6 +120,68 @@ export const ControllerGameScreen: React.FC<ControllerGameScreenProps> = ({ stat
               </span>
             ))}
         </div>
+
+        {!approved && (
+          <div
+            style={{
+              marginTop: '8px',
+              padding: '8px 10px',
+              borderRadius: '6px',
+              background: '#153E4B',
+              border: '1.5px solid #E6AF2E',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '8px',
+            }}
+          >
+            <span
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: '0.95rem',
+                letterSpacing: '1px',
+                color: '#FFE81F',
+              }}
+            >
+              ⚠️ CONTATORE DEL CAOS AVANZATO DI +1:
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {[0, 1, 2, 3].map(step => {
+                const effectiveStep =
+                  state.electionTracker === 0 &&
+                  state.logs[0]?.text.startsWith('CAOS!')
+                    ? 3
+                    : state.electionTracker;
+                const isActive = effectiveStep === step;
+                return (
+                  <React.Fragment key={step}>
+                    <span
+                      className={isActive ? 'sh-pulse' : undefined}
+                      style={{
+                        padding: step === 3 ? '2px 8px' : '2px 7px',
+                        borderRadius: '999px',
+                        fontWeight: 900,
+                        fontSize: '0.76rem',
+                        background: isActive
+                          ? step === 3
+                            ? '#D74A31'
+                            : '#E6AF2E'
+                          : 'rgba(245,239,225,0.15)',
+                        color: isActive ? '#1C1918' : '#F5EFE1',
+                        border: `2px solid ${isActive ? '#F5EFE1' : 'rgba(245,239,225,0.4)'}`,
+                        boxShadow: isActive ? '0 0 10px rgba(230,175,46,0.9)' : 'none',
+                      }}
+                    >
+                      {step === 3 ? '3=CAOS!' : step}
+                    </span>
+                    {step < 3 && <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>➔</span>}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
