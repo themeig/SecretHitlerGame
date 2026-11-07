@@ -134,6 +134,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   const isFascistPhoneFullScreenVote = activeTab === 'FASCIST_PLAYERS' && isVotingPhase;
 
   const [dismissedEnactmentId, setDismissedEnactmentId] = useState<string | null>(null);
+  const [revealedEnactmentId, setRevealedEnactmentId] = useState<string | null>(null);
   const [dismissedRejectionId, setDismissedRejectionId] = useState<string | null>(null);
   const [chaosOverlayAnimTarget, setChaosOverlayAnimTarget] = useState<boolean>(false);
 
@@ -143,6 +144,27 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     Date.now() - (publicState.lastEnactedPolicy.timestamp ?? 0) < 18000
       ? publicState.lastEnactedPolicy
       : null;
+
+  useEffect(() => {
+    if (!activeEnactment) return;
+    if (revealedEnactmentId === activeEnactment.id) return;
+    const t = setTimeout(() => {
+      setRevealedEnactmentId(activeEnactment.id);
+    }, 3950);
+    return () => clearTimeout(t);
+  }, [activeEnactment?.id, revealedEnactmentId]);
+
+  const isPreRevealSuspense = Boolean(
+    activeEnactment && revealedEnactmentId !== activeEnactment.id
+  );
+  const displayedLiberalPolicies =
+    isPreRevealSuspense && activeEnactment?.policy === 'LIBERAL'
+      ? Math.max(0, publicState.liberalPolicies - 1)
+      : publicState.liberalPolicies;
+  const displayedFascistPolicies =
+    isPreRevealSuspense && activeEnactment?.policy === 'FASCIST'
+      ? Math.max(0, publicState.fascistPolicies - 1)
+      : publicState.fascistPolicies;
 
   // Detect latest Government Rejected / Chaos Tracker +1 event from logs
   const latestRejectionLog = publicState.logs
@@ -198,6 +220,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       : 'FULL_TV';
 
   const getPhaseStatusBanner = () => {
+    if (isPreRevealSuspense) {
+      return {
+        title: '🥁 SESSIONE LEGISLATIVA — RIVELAZIONE LEGGE IN CORSO...',
+        sub: 'La 2ª carta viene scartata: quale legge sta per essere promulgata?',
+        bg: '#262322',
+      };
+    }
     switch (publicState.phase) {
       case 'SETUP_PLAYERS':
         return {
@@ -318,7 +347,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               lineHeight: 1,
             }}
           >
-            LIBERAL BOARD ({publicState.liberalPolicies}/5)
+            LIBERAL BOARD ({displayedLiberalPolicies}/5)
           </span>
         </div>
 
@@ -455,7 +484,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           }}
         >
           {[0, 1, 2, 3, 4].map(slotIdx => {
-            const isEnacted = slotIdx < publicState.liberalPolicies;
+            const isEnacted = slotIdx < displayedLiberalPolicies;
             const isWinSlot = slotIdx === 4;
             return (
               <div
@@ -622,7 +651,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               lineHeight: 1,
             }}
           >
-            FASCIST BOARD ({publicState.fascistPolicies}/6)
+            FASCIST BOARD ({displayedFascistPolicies}/6)
           </span>
         </div>
 
@@ -654,7 +683,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         }}
       >
         {[0, 1, 2, 3, 4, 5].map(slotIdx => {
-          const isEnacted = slotIdx < publicState.fascistPolicies;
+          const isEnacted = slotIdx < displayedFascistPolicies;
           const power = fascistPowers[slotIdx];
           const isHitlerZone = slotIdx >= 3;
           const isWinSlot = slotIdx === 5;
@@ -1020,7 +1049,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             👥 GIOCATORI AL TAVOLO (SENSO ORARIO) — VIVI: {aliveCount}/{publicState.players.length}
           </span>
           <span>
-            🕊️ Lib: {publicState.liberalPolicies}/5 &bull; 💀 Fasc: {publicState.fascistPolicies}/6 &bull;
+            🕊️ Lib: {displayedLiberalPolicies}/5 &bull; 💀 Fasc: {displayedFascistPolicies}/6 &bull;
             Mazzo: {publicState.drawPileCount} &bull; Scarti: {publicState.discardPileCount}
           </span>
         </div>
@@ -1277,7 +1306,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           >
             {isLiberalPhoneCompactDualBoard
               ? `🕊️💀 TEL. 1 (2 BOARD)`
-              : `🕊️ TEL. 1: LIBERALE (${publicState.liberalPolicies}/5)`}
+              : `🕊️ TEL. 1: LIBERALE (${displayedLiberalPolicies}/5)`}
           </button>
           <button
             type="button"
@@ -1297,7 +1326,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           >
             {isFascistPhoneFullScreenVote
               ? `🗳️ TEL. 2: VOTAZIONI`
-              : `💀 TEL. 2: FASCISTA (${publicState.fascistPolicies}/6)`}
+              : `💀 TEL. 2: FASCISTA (${displayedFascistPolicies}/6)`}
           </button>
           <button
             type="button"

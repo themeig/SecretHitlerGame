@@ -173,4 +173,35 @@ describe('Secret Hitler Game Engine', () => {
     expect(pubAfter.players.find(p => p.name === 'P1')?.lastVote).toBe('JA');
     expect(pubAfter.players.find(p => p.name === 'P0')?.lastVote).toBe('NEIN');
   });
+
+  it('prevents back-to-back Hitler repeats and rotates evil teams across consecutive matches', () => {
+    const names = ['Alice', 'Bob', 'Charlie', 'Diana', 'Evan'];
+    let state = createInitialGameState(names);
+    let backToBackHitlerCount = 0;
+    let identicalEvilTeamBackToBack = 0;
+
+    for (let i = 0; i < 15; i++) {
+      const prevHitler = state.players.find(p => p.secretRole === 'HITLER')!.name;
+      const prevEvilTeam = state.players
+        .filter(p => p.secretRole !== 'LIBERAL')
+        .map(p => p.name)
+        .sort()
+        .join(',');
+
+      state = gameReducer(state, { type: 'REMATCH_SAME_PLAYERS' });
+
+      const nextHitler = state.players.find(p => p.secretRole === 'HITLER')!.name;
+      const nextEvilTeam = state.players
+        .filter(p => p.secretRole !== 'LIBERAL')
+        .map(p => p.name)
+        .sort()
+        .join(',');
+
+      if (prevHitler === nextHitler) backToBackHitlerCount++;
+      if (prevEvilTeam === nextEvilTeam) identicalEvilTeamBackToBack++;
+    }
+
+    expect(backToBackHitlerCount).toBe(0);
+    expect(identicalEvilTeamBackToBack).toBe(0);
+  });
 });

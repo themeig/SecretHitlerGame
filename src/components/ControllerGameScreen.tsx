@@ -18,6 +18,26 @@ export const ControllerGameScreen: React.FC<ControllerGameScreenProps> = ({ stat
   const [unlockedPhaseKey, setUnlockedPhaseKey] = useState<string>('');
   const [selectedCardIdx, setSelectedCardIdx] = useState<number | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [revealedControllerEnactId, setRevealedControllerEnactId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const enacted = state.lastEnactedPolicy;
+    if (!enacted || revealedControllerEnactId === enacted.id) return;
+    if (Date.now() - enacted.timestamp >= 4000) {
+      setRevealedControllerEnactId(enacted.id);
+      return;
+    }
+    const t = setTimeout(() => {
+      setRevealedControllerEnactId(enacted.id);
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [state.lastEnactedPolicy?.id, revealedControllerEnactId]);
+
+  const isControllerPreReveal = Boolean(
+    state.lastEnactedPolicy &&
+      revealedControllerEnactId !== state.lastEnactedPolicy.id &&
+      Date.now() - state.lastEnactedPolicy.timestamp < 4500
+  );
 
   const currentVoter = getCurrentVoter(state);
   const phaseKey = `${state.round}-${state.phase}-${state.presidentIndex}-${state.lastElectedChancellorId ?? ''}-${
@@ -185,6 +205,57 @@ export const ControllerGameScreen: React.FC<ControllerGameScreenProps> = ({ stat
       </div>
     );
   };
+
+  // 0. SUSPENSE SHIELD WHILE 2ND CARD IS DISCARDED & LAW IS REVEALED ON BOARD/TV (0s - 4.0s)
+  if (isControllerPreReveal && state.lastEnactedPolicy) {
+    return (
+      <div
+        className="sh-paper"
+        style={{
+          borderRadius: '12px',
+          padding: '24px 16px',
+          background: '#1C1918',
+          color: '#F5EFE1',
+          border: '3px solid #E6AF2E',
+          textAlign: 'center',
+        }}
+      >
+        <div
+          style={{
+            fontSize: '0.76rem',
+            letterSpacing: '2px',
+            color: '#E6AF2E',
+            fontWeight: 900,
+          }}
+        >
+          🤫 SESSIONE LEGISLATIVA — IN ATTESA DELLO SVELAMENTO
+        </div>
+        <div
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '2.15rem',
+            letterSpacing: '1.5px',
+            color: '#F5EFE1',
+            margin: '8px 0',
+          }}
+        >
+          🥁 LA LEGGE STA PER ESSERE GIRATA SUL TABELLONE!
+        </div>
+        <p style={{ fontSize: '0.86rem', color: '#E5DCC8', margin: '0 auto 16px', maxWidth: '460px' }}>
+          La 2ª carta viene scartata coperta. Nessun indizio sul colore della legge finché non si
+          gira sul Tabellone!
+        </p>
+        <button
+          type="button"
+          className="sh-btn-ink"
+          style={{ borderColor: '#E6AF2E', color: '#E6AF2E' }}
+          onClick={() => setRevealedControllerEnactId(state.lastEnactedPolicy!.id)}
+        >
+          ⏭️ Prosegui subito
+        </button>
+      </div>
+    );
+  }
 
   // 1. CHANCELLOR NOMINATION
   if (state.phase === 'CHANCELLOR_NOMINATION') {

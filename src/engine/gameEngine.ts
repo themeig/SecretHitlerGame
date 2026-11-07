@@ -25,21 +25,98 @@ export function getFascistTrackPowers(_playerCount: number): (ExecutivePower | n
   return ['INVESTIGATE', 'INVESTIGATE', 'SPECIAL_ELECTION', 'EXECUTION', 'EXECUTION', null];
 }
 
-function shuffle<T>(items: T[], rng: () => number = Math.random): T[] {
+// Cryptographically strong random float in [0, 1) using Web Crypto API
+export function cryptoRandom(): number {
+  if (typeof globalThis !== 'undefined' && globalThis.crypto && globalThis.crypto.getRandomValues) {
+    const buf = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(buf);
+    return buf[0] / 4294967296;
+  }
+  return Math.random();
+}
+
+// Unbiased random integer in [0, maxExclusive) using rejection sampling when Web Crypto is used
+function randomInt(maxExclusive: number, rng: () => number): number {
+  if (maxExclusive <= 1) return 0;
+  if (
+    (rng === Math.random || rng === cryptoRandom) &&
+    typeof globalThis !== 'undefined' &&
+    globalThis.crypto &&
+    globalThis.crypto.getRandomValues
+  ) {
+    const maxUint32 = 4294967296;
+    const limit = maxUint32 - (maxUint32 % maxExclusive);
+    const buf = new Uint32Array(1);
+    let val = 0;
+    do {
+      globalThis.crypto.getRandomValues(buf);
+      val = buf[0];
+    } while (val >= limit);
+    return val % maxExclusive;
+  }
+  return Math.floor(rng() * maxExclusive);
+}
+
+function shuffle<T>(items: T[], rng: () => number = cryptoRandom): T[] {
   const arr = [...items];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+  // Perform 3 independent Fisher-Yates passes with alternating directions to eliminate any positional bias
+  for (let pass = 0; pass < 3; pass++) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = randomInt(i + 1, rng);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
   }
   return arr;
 }
 
-function createFullDeck(rng: () => number = Math.random): PolicyType[] {
+function createFullDeck(rng: () => number = cryptoRandom): PolicyType[] {
   const deck: PolicyType[] = [
     ...Array<PolicyType>(6).fill('LIBERAL'),
     ...Array<PolicyType>(11).fill('FASCIST'),
   ];
   return shuffle(deck, rng);
+}
+
+interface RoleHistorySnapshot {
+  rolesByPlayerKey: Record<string, SecretRole>;
+  firstPresidentKey: string;
+}
+
+const ROLE_HISTORY_STORAGE_KEY = 'secret_hitler_role_history_v2';
+let memoryRoleHistory: RoleHistorySnapshot[] = [];
+
+function loadRoleHistory(): RoleHistorySnapshot[] {
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(ROLE_HISTORY_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          memoryRoleHistory = parsed.slice(0, 4);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return memoryRoleHistory;
+}
+
+function saveRoleHistorySnapshot(snapshot: RoleHistorySnapshot) {
+  const current = loadRoleHistory();
+  memoryRoleHistory = [snapshot, ...current].slice(0, 4);
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(ROLE_HISTORY_STORAGE_KEY, JSON.stringify(memoryRoleHistory));
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function getPlayerHistoryKey(name: string, seatIndex: number): string {
+  const clean = name.trim().toLowerCase();
+  return clean || `seat_${seatIndex}`;
 }
 
 function addLog(
@@ -62,23 +139,137 @@ function addLog(
 
 export function createInitialGameState(
   playerNames: string[],
-  rng: () => number = Math.random
+  rng: () => number = cryptoRandom,
+  previousPlayers?: Player[],
+  recordInHistory: boolean = false
 ): GameState {
   const count = Math.min(10, Math.max(5, playerNames.length));
   const dist = ROLE_DISTRIBUTION[count] ?? ROLE_DISTRIBUTION[5];
 
-  const roles: SecretRole[] = [
+  const baseRoles: SecretRole[] = [
     ...Array<SecretRole>(dist.liberals).fill('LIBERAL'),
     ...Array<SecretRole>(dist.fascists).fill('FASCIST'),
     'HITLER',
   ];
-  const shuffledRoles = shuffle(roles, rng);
 
-  const players: Player[] = playerNames.slice(0, count).map((name, idx) => {
-    const secretRole = shuffledRoles[idx];
+  const normalizedNames = playerNames
+    .slice(0, count)
+    .map((n, idx) => n.trim() || `Giocatore ${idx + 1}`);
+  const playerKeys = normalizedNames.map((n, idx) => getPlayerHistoryKey(n, idx));
+
+  // Build effective history from previousPlayers + persisted history
+  const storedHistory = loadRoleHistory();
+  const effectiveHistory: RoleHistorySnapshot[] = [...storedHistory];
+  if (previousPlayers && previousPlayers.length > 0) {
+    const prevMap: Record<string, SecretRole> = {};
+    previousPlayers.forEach((p, idx) => {
+      prevMap[getPlayerHistoryKey(p.name, idx)] = p.secretRole;
+    });
+    const prevFirstKey = getPlayerHistoryKey(
+      previousPlayers[0]?.name ?? '',
+      0
+    );
+    // Avoid duplicating if storedHistory[0] is already identical
+    const topStored = effectiveHistory[0]?.rolesByPlayerKey;
+    const isSameAsTop =
+      topStored &&
+      Object.keys(prevMap).every(k => topStored[k] === prevMap[k]);
+    if (!isSameAsTop) {
+      effectiveHistory.unshift({
+        rolesByPlayerKey: prevMap,
+        firstPresidentKey: prevFirstKey,
+      });
+    }
+  }
+
+  let chosenRoles: SecretRole[];
+  if (effectiveHistory.length === 0) {
+    chosenRoles = shuffle(baseRoles, rng);
+  } else {
+    // Generate 24 independent cryptographically-shuffled candidates and pick the one
+    // with the lowest repetition penalty so the same players don't keep getting Hitler/Fascist back-to-back
+    const CANDIDATE_COUNT = 24;
+    let bestRoles = shuffle(baseRoles, rng);
+    let bestScore = Infinity;
+
+    const lastGame = effectiveHistory[0]?.rolesByPlayerKey ?? {};
+    const twoGamesAgo = effectiveHistory[1]?.rolesByPlayerKey ?? {};
+
+    const lastEvilSet = new Set(
+      Object.entries(lastGame)
+        .filter(([, r]) => r === 'FASCIST' || r === 'HITLER')
+        .map(([k]) => k)
+    );
+
+    for (let c = 0; c < CANDIDATE_COUNT; c++) {
+      const candidate = shuffle(baseRoles, rng);
+      let penalty = 0;
+
+      const currentEvilKeys: string[] = [];
+
+      for (let i = 0; i < count; i++) {
+        const pKey = playerKeys[i];
+        const role = candidate[i];
+        const prevRole1 = lastGame[pKey];
+        const prevRole2 = twoGamesAgo[pKey];
+
+        if (role === 'FASCIST' || role === 'HITLER') {
+          currentEvilKeys.push(pKey);
+        }
+
+        // 1. Back-to-back HITLER on the exact same person
+        if (role === 'HITLER' && prevRole1 === 'HITLER') {
+          penalty += 150;
+        }
+        // 2. HITLER two games ago and HITLER again now
+        if (role === 'HITLER' && prevRole2 === 'HITLER') {
+          penalty += 55;
+        }
+        // 3. Swapping between HITLER and FASCIST in consecutive games
+        if (
+          (role === 'HITLER' && prevRole1 === 'FASCIST') ||
+          (role === 'FASCIST' && prevRole1 === 'HITLER')
+        ) {
+          penalty += 60;
+        }
+        // 4. Back-to-back FASCIST on the same person
+        if (role === 'FASCIST' && prevRole1 === 'FASCIST') {
+          penalty += 65;
+        }
+        // 5. Evil role 3 games in a row (last 2 games were Fascist/Hitler and now Evil again)
+        const wasEvil1 = prevRole1 === 'FASCIST' || prevRole1 === 'HITLER';
+        const wasEvil2 = prevRole2 === 'FASCIST' || prevRole2 === 'HITLER';
+        const isEvilNow = role === 'FASCIST' || role === 'HITLER';
+        if (isEvilNow && wasEvil1 && wasEvil2) {
+          penalty += 220;
+        }
+      }
+
+      // 6. Heavy penalty if the entire Fascist+Hitler team is identical to the previous game
+      if (
+        lastEvilSet.size > 0 &&
+        currentEvilKeys.length === lastEvilSet.size &&
+        currentEvilKeys.every(k => lastEvilSet.has(k))
+      ) {
+        penalty += 260;
+      }
+
+      // Add small cryptographic jitter (0..16) so all non-repeating permutations have equal random chance
+      penalty += randomInt(17, rng);
+
+      if (penalty < bestScore) {
+        bestScore = penalty;
+        bestRoles = candidate;
+      }
+    }
+    chosenRoles = bestRoles;
+  }
+
+  const players: Player[] = normalizedNames.map((name, idx) => {
+    const secretRole = chosenRoles[idx];
     return {
       id: `p-${idx + 1}`,
-      name: name.trim() || `Giocatore ${idx + 1}`,
+      name,
       seatIndex: idx,
       secretRole,
       partyMembership: secretRole === 'LIBERAL' ? 'LIBERAL' : 'FASCIST',
@@ -89,7 +280,23 @@ export function createInitialGameState(
     };
   });
 
-  const firstPresidentIndex = Math.floor(rng() * players.length);
+  // Pick a random first President, avoiding the exact same first President as last game when possible
+  let firstPresidentIndex = randomInt(players.length, rng);
+  const lastFirstPresKey = effectiveHistory[0]?.firstPresidentKey;
+  if (lastFirstPresKey && players.length > 1 && playerKeys[firstPresidentIndex] === lastFirstPresKey) {
+    firstPresidentIndex = (firstPresidentIndex + 1 + randomInt(players.length - 1, rng)) % players.length;
+  }
+
+  if (recordInHistory) {
+    const snapshotMap: Record<string, SecretRole> = {};
+    players.forEach((p, idx) => {
+      snapshotMap[playerKeys[idx]] = p.secretRole;
+    });
+    saveRoleHistorySnapshot({
+      rolesByPlayerKey: snapshotMap,
+      firstPresidentKey: playerKeys[firstPresidentIndex],
+    });
+  }
 
   return {
     round: 1,
@@ -446,11 +653,12 @@ function resolveElectionOutcome(
 export function gameReducer(
   state: GameState,
   action: GameAction,
-  rng: () => number = Math.random
+  rng: () => number = cryptoRandom
 ): GameState {
   switch (action.type) {
     case 'START_GAME': {
-      return createInitialGameState(action.playerNames, rng);
+      const prevPlayers = state.phase !== 'SETUP_PLAYERS' || state.round > 1 ? state.players : undefined;
+      return createInitialGameState(action.playerNames, rng, prevPlayers, true);
     }
 
     case 'NEXT_ROLE_REVEAL': {
@@ -926,7 +1134,7 @@ export function gameReducer(
 
     case 'REMATCH_SAME_PLAYERS': {
       const names = state.players.map(p => p.name);
-      return createInitialGameState(names, rng);
+      return createInitialGameState(names, rng, state.players, true);
     }
 
     case 'RESET_TO_SETUP': {

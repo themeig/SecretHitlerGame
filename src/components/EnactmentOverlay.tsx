@@ -204,12 +204,17 @@ export const EnactmentOverlay: React.FC<EnactmentOverlayProps> = ({
   // Sub-state for Chancellor phase: 0 = animating President's discard (3->2 cards), 1 = showing 2 cards waiting
   const [chancellorSubStep, setChancellorSubStep] = useState<0 | 1>(0);
 
-  // Enactment sequence steps when `event` is active:
+  // Enactment sequence steps when `event` is active, tied strictly to `event.id` so a stale step=13
+  // from a previous policy enactment can NEVER flash on the first render frame of a new enactment:
   // 10 = Chancellor discards 2nd card (2 -> 1 card left) [0.0s - 1.35s]
   // 11 = Suspense drumroll on the 1 remaining card + Decree Signing [1.35s - 3.25s]
   // 12 = Wax Stamp Slam ("PROMULGATA!") on the 1 card (or Tel 1 handover) [3.25s - 3.95s]
   // 13 = 3D Card Flip & Orientation Reveal (LIBERAL vs FASCIST) [3.95s - 7.4s]
-  const [enactStep, setEnactStep] = useState<number>(10);
+  const [enactState, setEnactState] = useState<{ eventId: string | null; step: number }>({
+    eventId: null,
+    step: 10,
+  });
+  const enactStep = event && enactState.eventId === event.id ? enactState.step : 10;
 
   // Allows temporarily peeking at the board during LEGISLATIVE_PRESIDENT / LEGISLATIVE_CHANCELLOR
   const [minimized, setMinimized] = useState(false);
@@ -259,10 +264,12 @@ export const EnactmentOverlay: React.FC<EnactmentOverlayProps> = ({
   // Trigger final enactment sequence when `event` arrives
   useEffect(() => {
     if (!event) {
+      setEnactState({ eventId: null, step: 10 });
       backgroundMusic.setDucked(false);
       return;
     }
 
+    const currentId = event.id;
     clearTimers();
     setMinimized(false);
     backgroundMusic.setDucked(true);
@@ -272,7 +279,7 @@ export const EnactmentOverlay: React.FC<EnactmentOverlayProps> = ({
     const isPart2 = mode === 'PART_2_STAMP_REVEAL';
 
     // STEP 10 (0.0s - 1.35s): Second card discarded by Chancellor (or 1 card drawn by Chaos) on ALL screens
-    setEnactStep(10);
+    setEnactState({ eventId: currentId, step: 10 });
     if (event.byChaos) {
       enactmentAudio.playDealCardsSound(1);
     } else {
@@ -282,7 +289,7 @@ export const EnactmentOverlay: React.FC<EnactmentOverlayProps> = ({
     // STEP 11 (1.35s - 3.25s): 1 Card Remains -> Rising Suspense Drumroll + Presidential Signing
     timersRef.current.push(
       setTimeout(() => {
-        setEnactStep(11);
+        setEnactState({ eventId: currentId, step: 11 });
         enactmentAudio.playSuspenseDrumroll(1.85);
         if (isPart1 || isTv) {
           enactmentAudio.playSigningSound(1.8);
@@ -293,7 +300,7 @@ export const EnactmentOverlay: React.FC<EnactmentOverlayProps> = ({
     // STEP 12 (3.25s - 3.95s): Handover on Tel 1 / Official Wax Stamp Slam on Tel 2 & TV
     timersRef.current.push(
       setTimeout(() => {
-        setEnactStep(12);
+        setEnactState({ eventId: currentId, step: 12 });
         if (isPart2 || isTv) {
           enactmentAudio.playStampSound();
         }
@@ -303,7 +310,7 @@ export const EnactmentOverlay: React.FC<EnactmentOverlayProps> = ({
     // STEP 13 (3.95s - 7.4s): 3D Flip Reveal of the Final Card + Faction Fanfare
     timersRef.current.push(
       setTimeout(() => {
-        setEnactStep(13);
+        setEnactState({ eventId: currentId, step: 13 });
         if (isPart2 || isTv) {
           enactmentAudio.playRevealSound(event.policy);
         }
@@ -370,14 +377,13 @@ export const EnactmentOverlay: React.FC<EnactmentOverlayProps> = ({
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
-        background: 'rgba(16, 14, 13, 0.91)',
-        backdropFilter: 'blur(6px)',
+        background: event ? 'rgba(12, 10, 9, 0.985)' : 'rgba(16, 14, 13, 0.94)',
+        backdropFilter: 'blur(8px)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '12px',
-        animation: 'shOverlayFadeIn 0.25s ease-out',
         overflow: 'hidden',
       }}
     >
@@ -454,6 +460,10 @@ export const EnactmentOverlay: React.FC<EnactmentOverlayProps> = ({
           0% { opacity: 0; transform: translate(-50%, -50%) scale(3.2) rotate(-18deg); }
           70% { opacity: 1; transform: translate(-50%, -50%) scale(0.92) rotate(-8deg); }
           100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-8deg); }
+        }
+        @keyframes shFlipCard3D {
+          0% { transform: rotateY(0deg); }
+          100% { transform: rotateY(180deg); }
         }
       `}</style>
 
@@ -1057,23 +1067,12 @@ export const EnactmentOverlay: React.FC<EnactmentOverlayProps> = ({
                 height: '290px',
               }}
             >
-              <div
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  position: 'relative',
-                  transformStyle: 'preserve-3d',
-                  transition: 'transform 0.72s cubic-bezier(0.17, 0.89, 0.32, 1.24)',
-                  transform: enactStep === 13 ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                }}
-              >
-                {/* FRONT FACE (0deg): Face-Down Secret Policy Card with Wax Stamp */}
+              {enactStep === 12 ? (
+                /* STEP 12: Strictly ONLY the Face-Down card in the DOM (zero colored back face mounted!) */
                 <div
                   style={{
-                    position: 'absolute',
-                    inset: 0,
-                    backfaceVisibility: 'hidden',
-                    WebkitBackfaceVisibility: 'hidden',
+                    width: '100%',
+                    height: '100%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1086,91 +1085,122 @@ export const EnactmentOverlay: React.FC<EnactmentOverlayProps> = ({
                     style={{ width: '210px', height: '280px' }}
                   />
                 </div>
-
-                {/* BACK FACE (180deg): Revealed Policy Orientation (LIBERAL or FASCIST) */}
+              ) : (
+                /* STEP 13: Mounts at t=3.95s and animates the 3D 180deg flip to reveal the Policy */
                 <div
                   style={{
-                    position: 'absolute',
-                    inset: 0,
-                    backfaceVisibility: 'hidden',
-                    WebkitBackfaceVisibility: 'hidden',
-                    transform: 'rotateY(180deg)',
-                    borderRadius: '14px',
-                    padding: '20px 16px',
-                    textAlign: 'center',
-                    border: `4px solid ${isLiberal ? '#E6AF2E' : '#F5EFE1'}`,
-                    boxShadow: `0 18px 50px ${
-                      isLiberal ? 'rgba(58, 149, 176, 0.9)' : 'rgba(215, 74, 49, 0.9)'
-                    }`,
-                    background: isLiberal
-                      ? 'linear-gradient(145deg, #3A95B0 0%, #153E4B 100%)'
-                      : 'linear-gradient(145deg, #D74A31 0%, #5B140C 100%)',
-                    color: '#F5EFE1',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
+                    width: '100%',
+                    height: '100%',
+                    position: 'relative',
+                    transformStyle: 'preserve-3d',
+                    animation: 'shFlipCard3D 0.72s cubic-bezier(0.17, 0.89, 0.32, 1.24) forwards',
                   }}
                 >
+                  {/* FRONT FACE (0deg): Face-Down Secret Policy Card with Wax Stamp */}
                   <div
                     style={{
-                      fontSize: '0.68rem',
-                      fontWeight: 900,
-                      letterSpacing: '2px',
-                      borderBottom: '1.5px solid rgba(245,239,225,0.45)',
-                      paddingBottom: '4px',
-                      width: '100%',
+                      position: 'absolute',
+                      inset: 0,
+                      backfaceVisibility: 'hidden',
+                      WebkitBackfaceVisibility: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
-                    REICHSTAG 1932
+                    <SecretPolicyCardBack
+                      label={`${event.presidentName} & ${event.chancellorName}`}
+                      stampSlamText="PROMULGATA!"
+                      size="large"
+                      style={{ width: '210px', height: '280px' }}
+                    />
                   </div>
 
-                  <div style={{ margin: '6px 0' }}>
-                    {isLiberal ? (
-                      <LiberalDoveEmblem size={76} />
-                    ) : (
-                      <FascistSkullEmblem size={76} />
-                    )}
-                  </div>
-
-                  <div>
-                    <div
-                      style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: '2.25rem',
-                        letterSpacing: '2.5px',
-                        lineHeight: 1,
-                      }}
-                    >
-                      {isLiberal ? 'LIBERAL' : 'FASCIST'}
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: '1.25rem',
-                        letterSpacing: '3px',
-                        color: '#E6AF2E',
-                        marginTop: '2px',
-                      }}
-                    >
-                      POLICY
-                    </div>
-                  </div>
-
+                  {/* BACK FACE (180deg): Revealed Policy Orientation (LIBERAL or FASCIST) */}
                   <div
                     style={{
-                      fontSize: '0.72rem',
-                      fontWeight: 800,
-                      background: 'rgba(0,0,0,0.32)',
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      width: '100%',
+                      position: 'absolute',
+                      inset: 0,
+                      backfaceVisibility: 'hidden',
+                      WebkitBackfaceVisibility: 'hidden',
+                      transform: 'rotateY(180deg)',
+                      borderRadius: '14px',
+                      padding: '20px 16px',
+                      textAlign: 'center',
+                      border: `4px solid ${isLiberal ? '#E6AF2E' : '#F5EFE1'}`,
+                      boxShadow: `0 18px 50px ${
+                        isLiberal ? 'rgba(58, 149, 176, 0.9)' : 'rgba(215, 74, 49, 0.9)'
+                      }`,
+                      background: isLiberal
+                        ? 'linear-gradient(145deg, #3A95B0 0%, #153E4B 100%)'
+                        : 'linear-gradient(145deg, #D74A31 0%, #5B140C 100%)',
+                      color: '#F5EFE1',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
                     }}
                   >
-                    {isLiberal ? '🕊️ LEGGE LIBERALE' : '💀 LEGGE FASCISTA'}
+                    <div
+                      style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 900,
+                        letterSpacing: '2px',
+                        borderBottom: '1.5px solid rgba(245,239,225,0.45)',
+                        paddingBottom: '4px',
+                        width: '100%',
+                      }}
+                    >
+                      REICHSTAG 1932
+                    </div>
+
+                    <div style={{ margin: '6px 0' }}>
+                      {isLiberal ? (
+                        <LiberalDoveEmblem size={76} />
+                      ) : (
+                        <FascistSkullEmblem size={76} />
+                      )}
+                    </div>
+
+                    <div>
+                      <div
+                        style={{
+                          fontFamily: 'var(--font-display)',
+                          fontSize: '2.25rem',
+                          letterSpacing: '2.5px',
+                          lineHeight: 1,
+                        }}
+                      >
+                        {isLiberal ? 'LIBERAL' : 'FASCIST'}
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: 'var(--font-display)',
+                          fontSize: '1.25rem',
+                          letterSpacing: '3px',
+                          color: '#E6AF2E',
+                          marginTop: '2px',
+                        }}
+                      >
+                        POLICY
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        background: 'rgba(0,0,0,0.32)',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        width: '100%',
+                      }}
+                    >
+                      {isLiberal ? '🕊️ LEGGE LIBERALE' : '💀 LEGGE FASCISTA'}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
