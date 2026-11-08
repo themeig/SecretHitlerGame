@@ -280,7 +280,8 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
         borderRadius: '14px',
         overflow: 'hidden',
         border: `3px solid ${isLiberalWin ? '#3A95B0' : '#D74A31'}`,
-        background: '#07080C',
+        background: 'rgba(7, 8, 12, 0.84)',
+        backdropFilter: 'blur(2px)',
         color: '#FFE81F',
         boxShadow: '0 16px 45px rgba(0,0,0,0.85)',
         display: 'flex',
@@ -449,7 +450,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({
             height: '430px',
             width: '100%',
             background:
-              'radial-gradient(ellipse at bottom, #161B26 0%, #050608 100%)',
+              'radial-gradient(ellipse at bottom, rgba(22, 27, 38, 0.72) 0%, rgba(5, 6, 8, 0.78) 100%)',
             overflow: 'hidden',
             display: 'flex',
             justifyContent: 'center',

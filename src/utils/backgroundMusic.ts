@@ -156,16 +156,28 @@ class BackgroundMusicManager {
     return this.volume;
   }
 
+  private pingTvVideo() {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new Event('sh-keep-tv-video-playing'));
+    setTimeout(() => window.dispatchEvent(new Event('sh-keep-tv-video-playing')), 120);
+    setTimeout(() => window.dispatchEvent(new Event('sh-keep-tv-video-playing')), 350);
+  }
+
   private applyVolume() {
     if (!this.bgAudio) return;
     if (this.isDucked || !this.isEnabled) {
       this.bgAudio.pause();
+      this.pingTvVideo();
       return;
     }
     this.bgAudio.volume = Math.max(0, Math.min(1, this.computeTargetVolume()));
     if (this.bgAudio.paused) {
-      this.bgAudio.play().catch(() => {});
+      this.bgAudio
+        .play()
+        .then(() => this.pingTvVideo())
+        .catch(() => {});
     }
+    this.pingTvVideo();
   }
 
   public setEnabled(enabled: boolean) {
@@ -240,7 +252,11 @@ class BackgroundMusicManager {
 
       audio.addEventListener('ended', handleFinish);
       audio.addEventListener('error', handleFinish);
-      audio.play().catch(handleFinish);
+      audio
+        .play()
+        .then(() => this.pingTvVideo())
+        .catch(handleFinish);
+      this.pingTvVideo();
     } catch {
       this.isIntroPlaying = false;
       this.applyVolume();
@@ -283,8 +299,12 @@ class BackgroundMusicManager {
 
     this.applyVolume();
     if (!this.isDucked && this.bgAudio.paused) {
-      this.bgAudio.play().catch(() => {});
+      this.bgAudio
+        .play()
+        .then(() => this.pingTvVideo())
+        .catch(() => {});
     }
+    this.pingTvVideo();
   }
 
   public syncWithGamePhase(

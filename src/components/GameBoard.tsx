@@ -16,6 +16,7 @@ export type BoardScreenTab = 'LIBERAL_DECK' | 'FASCIST_PLAYERS' | 'BOTH';
 interface GameBoardProps {
   publicState: PublicBoardState;
   initialTab?: BoardScreenTab;
+  onTabChange?: (tab: BoardScreenTab) => void;
   isFixedBoardPhone?: boolean;
   roomCode?: string;
   connectedPeers?: number;
@@ -46,17 +47,24 @@ const POWER_LABELS_IT: Record<ExecutivePower, { short: string; desc: string }> =
 export const GameBoard: React.FC<GameBoardProps> = ({
   publicState,
   initialTab = 'LIBERAL_DECK',
+  onTabChange,
   isFixedBoardPhone = false,
   roomCode,
   connectedPeers = 0,
   isFullscreen = false,
   onToggleFullscreen,
 }) => {
-  const [activeTab, setActiveTab] = useState<BoardScreenTab>(initialTab);
+  const [activeTab, setActiveTabState] = useState<BoardScreenTab>(initialTab);
   const [musicEnabled, setMusicEnabled] = useState(() => backgroundMusic.getEnabled());
 
+  const setActiveTab = (tab: BoardScreenTab) => {
+    setActiveTabState(tab);
+    onTabChange?.(tab);
+  };
+
   useEffect(() => {
-    setActiveTab(initialTab);
+    setActiveTabState(initialTab);
+    onTabChange?.(initialTab);
   }, [initialTab]);
 
   useEffect(() => {
@@ -424,10 +432,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: compact ? '68px 1fr 68px' : '105px 1fr 105px',
-          gap: compact ? '5px' : '8px',
+          gridTemplateColumns: compact
+            ? 'clamp(48px, 8.5vw, 66px) minmax(0, 1fr) clamp(48px, 8.5vw, 66px)'
+            : 'clamp(56px, 11vw, 88px) minmax(0, 1fr) clamp(56px, 11vw, 88px)',
+          gap: compact ? '5px' : '7px',
           alignItems: 'stretch',
           flex: 1,
+          minWidth: 0,
         }}
       >
         {/* Left Stack: DRAW PILE */}
@@ -436,21 +447,22 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             background: '#153E4B',
             border: '2.5px solid #F5EFE1',
             borderRadius: '8px',
-            padding: compact ? '4px 3px' : '8px 6px',
+            padding: compact ? '4px 2px' : '6px 4px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             textAlign: 'center',
             boxShadow: '2px 2px 0 #000',
-            minHeight: compact ? '118px' : '132px',
+            minHeight: compact ? '114px' : '128px',
+            minWidth: 0,
           }}
         >
           <div
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: compact ? '0.74rem' : '1rem',
-              letterSpacing: '0.8px',
+              fontSize: compact ? 'clamp(0.62rem, 1.1vw, 0.74rem)' : 'clamp(0.72rem, 1.5vw, 0.96rem)',
+              letterSpacing: '0.6px',
               lineHeight: 1.05,
               color: '#E6AF2E',
             }}
@@ -462,9 +474,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               background: '#F5EFE1',
               color: '#262322',
               fontFamily: 'var(--font-display)',
-              fontSize: compact ? '1.45rem' : '2.2rem',
+              fontSize: compact ? 'clamp(1.2rem, 2.2vw, 1.45rem)' : 'clamp(1.45rem, 3vw, 2.1rem)',
               lineHeight: 1,
-              padding: compact ? '3px 8px' : '6px 14px',
+              padding: compact ? '3px 6px' : '5px 10px',
               borderRadius: '5px',
               border: '2px solid #262322',
               marginTop: '4px',
@@ -478,9 +490,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(5, 1fr)',
-            gap: compact ? '5px' : '6px',
+            gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+            gap: compact ? '4px' : '6px',
             alignItems: 'stretch',
+            minWidth: 0,
           }}
         >
           {[0, 1, 2, 3, 4].map(slotIdx => {
@@ -490,8 +503,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               <div
                 key={slotIdx}
                 style={{
-                  minHeight: compact ? '118px' : '132px',
+                  minHeight: compact ? '114px' : '128px',
                   height: '100%',
+                  minWidth: 0,
+                  overflow: 'hidden',
                   borderRadius: '6px',
                   border: isWinSlot
                     ? '2px solid #F5EFE1'
@@ -501,22 +516,24 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  padding: isEnacted ? '0' : '4px',
+                  padding: isEnacted ? '0' : '3px 2px',
+                  textAlign: 'center',
                 }}
               >
                 {isEnacted ? (
-                  <div style={{ width: '100%', height: '100%' }}>
+                  <div style={{ width: '100%', height: '100%', minWidth: 0 }}>
                     <PolicyTileArt type="LIBERAL" compact />
                   </div>
                 ) : isWinSlot ? (
                   <>
-                    <LiberalDoveEmblem size={compact ? 30 : 42} />
+                    <LiberalDoveEmblem size={compact ? 26 : 38} />
                     <span
                       style={{
                         fontFamily: 'var(--font-display)',
-                        fontSize: compact ? '0.72rem' : '0.82rem',
-                        letterSpacing: '0.8px',
-                        marginTop: '4px',
+                        fontSize: compact ? 'clamp(0.58rem, 1vw, 0.72rem)' : 'clamp(0.66rem, 1.3vw, 0.82rem)',
+                        letterSpacing: '0.5px',
+                        marginTop: '3px',
+                        lineHeight: 1,
                       }}
                     >
                       5°=VITTORIA
@@ -526,7 +543,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                   <span
                     style={{
                       fontFamily: 'var(--font-display)',
-                      fontSize: compact ? '1.25rem' : '1.45rem',
+                      fontSize: compact ? '1.2rem' : '1.45rem',
                       opacity: 0.5,
                     }}
                   >
@@ -544,21 +561,22 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             background: '#262322',
             border: '2.5px solid #F5EFE1',
             borderRadius: '8px',
-            padding: compact ? '4px 3px' : '8px 6px',
+            padding: compact ? '4px 2px' : '6px 4px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             textAlign: 'center',
             boxShadow: '2px 2px 0 #000',
-            minHeight: compact ? '118px' : '132px',
+            minHeight: compact ? '114px' : '128px',
+            minWidth: 0,
           }}
         >
           <div
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: compact ? '0.74rem' : '1rem',
-              letterSpacing: '0.8px',
+              fontSize: compact ? 'clamp(0.62rem, 1.1vw, 0.74rem)' : 'clamp(0.72rem, 1.5vw, 0.96rem)',
+              letterSpacing: '0.6px',
               lineHeight: 1.05,
               color: '#E5DCC8',
             }}
@@ -570,9 +588,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               background: '#3B3634',
               color: '#F5EFE1',
               fontFamily: 'var(--font-display)',
-              fontSize: compact ? '1.45rem' : '2.2rem',
+              fontSize: compact ? 'clamp(1.2rem, 2.2vw, 1.45rem)' : 'clamp(1.45rem, 3vw, 2.1rem)',
               lineHeight: 1,
-              padding: compact ? '3px 8px' : '6px 14px',
+              padding: compact ? '3px 6px' : '5px 10px',
               borderRadius: '5px',
               border: '2px solid #F5EFE1',
               marginTop: '4px',
@@ -676,10 +694,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(6, 1fr)',
-          gap: compact ? '5px' : '6px',
+          gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
+          gap: compact ? '4px' : '6px',
           alignItems: 'stretch',
           flex: 1,
+          minWidth: 0,
         }}
       >
         {[0, 1, 2, 3, 4, 5].map(slotIdx => {
@@ -693,8 +712,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             <div
               key={slotIdx}
               style={{
-                minHeight: compact ? '118px' : '132px',
+                minHeight: compact ? '114px' : '128px',
                 height: '100%',
+                minWidth: 0,
+                overflow: 'hidden',
                 borderRadius: '6px',
                 border: isHitlerZone
                   ? '2px solid #E6AF2E'
@@ -708,23 +729,24 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: isEnacted ? '0' : compact ? '4px 3px' : '6px 4px',
+                padding: isEnacted ? '0' : compact ? '4px 2px' : '6px 3px',
                 textAlign: 'center',
               }}
             >
               {isEnacted ? (
-                <div style={{ width: '100%', height: '100%' }}>
+                <div style={{ width: '100%', height: '100%', minWidth: 0 }}>
                   <PolicyTileArt type="FASCIST" compact />
                 </div>
               ) : isWinSlot ? (
                 <>
-                  <FascistSkullEmblem size={compact ? 24 : 36} />
+                  <FascistSkullEmblem size={compact ? 22 : 34} />
                   <span
                     style={{
                       fontFamily: 'var(--font-display)',
-                      fontSize: compact ? '0.68rem' : '0.8rem',
-                      letterSpacing: '0.8px',
+                      fontSize: compact ? 'clamp(0.56rem, 1vw, 0.68rem)' : 'clamp(0.65rem, 1.3vw, 0.8rem)',
+                      letterSpacing: '0.5px',
                       marginTop: '2px',
+                      lineHeight: 1,
                     }}
                   >
                     6°=VITTORIA
@@ -734,19 +756,19 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 <>
                   <div
                     style={{
-                      fontSize: compact ? '0.55rem' : '0.62rem',
+                      fontSize: compact ? '0.52rem' : '0.6rem',
                       opacity: 0.85,
                       fontWeight: 700,
                     }}
                   >
                     {slotIdx + 1}ª LEGGE
                   </div>
-                  <PowerIcon power={power} size={compact ? 20 : 28} />
+                  <PowerIcon power={power} size={compact ? 18 : 26} />
                   <span
                     style={{
                       fontFamily: 'var(--font-display)',
-                      fontSize: compact ? '0.68rem' : '0.8rem',
-                      letterSpacing: '0.5px',
+                      fontSize: compact ? 'clamp(0.56rem, 1vw, 0.68rem)' : 'clamp(0.64rem, 1.3vw, 0.8rem)',
+                      letterSpacing: '0.4px',
                       lineHeight: 1.02,
                       marginTop: '2px',
                     }}
@@ -756,7 +778,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                   {isVetoSlot && (
                     <span
                       style={{
-                        fontSize: '0.55rem',
+                        fontSize: '0.52rem',
                         background: '#E6AF2E',
                         color: '#262322',
                         fontWeight: 900,
@@ -874,7 +896,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${Math.min(alivePlayers.length, 5)}, 1fr)`,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(125px, 1fr))',
             gap: '8px',
           }}
         >
@@ -1057,7 +1079,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${Math.min(publicState.players.length, 5)}, 1fr)`,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))',
             gap: '6px',
           }}
         >
@@ -1229,45 +1251,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         zIndex: 1,
       }}
     >
-      {/* Silent Black & White WWII Archival Background Video in TV Mode */}
-      {isTvMode && (
-        <div
-          aria-hidden="true"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: -1,
-            pointerEvents: 'none',
-            overflow: 'hidden',
-            backgroundColor: '#0D0C0B',
-          }}
-        >
-          <video
-            src="/video/ww2_tv_bg.mp4"
-            autoPlay
-            loop
-            muted
-            playsInline
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              filter: 'grayscale(100%) contrast(1.22) brightness(0.68)',
-              opacity: 0.62,
-            }}
-          />
-          {/* Vintage newsreel vignette & scanline overlay */}
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background:
-                'radial-gradient(circle at center, rgba(18, 16, 15, 0.25) 0%, rgba(12, 11, 10, 0.78) 100%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 1px, transparent 1px, transparent 3px)',
-            }}
-          />
-        </div>
-      )}
-
       {/* Horizontal Top Bar: Screen Switcher (Tel 1, Tel 2, TV Mode, Fullscreen) + Live Phase Banner */}
       <div
         style={{
@@ -1556,7 +1539,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 560px), 1fr))',
               gap: '8px',
               alignItems: 'stretch',
             }}
@@ -1578,8 +1561,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             position: 'fixed',
             inset: 0,
             zIndex: 9998,
-            background: 'rgba(12, 10, 9, 0.84)',
-            backdropFilter: 'blur(5px)',
+            background: isTvMode ? 'rgba(12, 10, 9, 0.62)' : 'rgba(12, 10, 9, 0.84)',
+            backdropFilter: isTvMode ? 'blur(1.5px)' : 'blur(5px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

@@ -133,10 +133,10 @@ export const PolicyTileArt: React.FC<{
       tabIndex={onClick ? 0 : undefined}
       style={{
         background: bg,
-        border: `3px solid ${selected ? '#E6AF2E' : '#F5EFE1'}`,
-        boxShadow: selected ? '0 0 0 3px #E6AF2E, 4px 5px 0 #000' : `3px 4px 0 ${border}`,
+        border: `${compact ? '2.5px' : '3px'} solid ${selected ? '#E6AF2E' : '#F5EFE1'}`,
+        boxShadow: selected ? '0 0 0 3px #E6AF2E, 4px 5px 0 #000' : `2px 3px 0 ${border}`,
         borderRadius: '8px',
-        padding: compact ? '6px 5px' : '12px 10px',
+        padding: compact ? '4px 3px' : '10px 8px',
         color: '#F5EFE1',
         textAlign: 'center',
         cursor: onClick ? 'pointer' : 'default',
@@ -144,49 +144,55 @@ export const PolicyTileArt: React.FC<{
         transition: 'transform 0.12s ease',
         transform: selected ? 'translateY(-4px)' : 'none',
         userSelect: 'none',
+        width: '100%',
+        minWidth: 0,
         height: compact ? '100%' : undefined,
-        display: compact ? 'flex' : undefined,
-        flexDirection: compact ? 'column' : undefined,
-        justifyContent: compact ? 'center' : undefined,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        overflow: 'hidden',
       }}
     >
       {/* Inner document border with dog-ear corner */}
       <div
         style={{
-          border: '2px solid rgba(245,239,225,0.8)',
+          border: '1.5px solid rgba(245,239,225,0.82)',
           borderRadius: '4px',
-          padding: compact ? '6px 4px' : '10px 6px',
+          padding: compact ? '4px 2px' : '8px 5px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          flex: compact ? 1 : undefined,
-          gap: compact ? '3px' : '6px',
+          flex: 1,
+          minWidth: 0,
+          gap: compact ? '2px' : '5px',
         }}
       >
         {isLib ? (
-          <LiberalDoveEmblem size={compact ? 34 : 46} />
+          <LiberalDoveEmblem size={compact ? 28 : 44} />
         ) : (
-          <FascistSkullEmblem size={compact ? 34 : 46} />
+          <FascistSkullEmblem size={compact ? 28 : 44} />
         )}
         <div
           style={{
             fontFamily: 'var(--font-display)',
-            fontSize: compact ? '1.1rem' : '1.45rem',
-            letterSpacing: '2px',
+            fontSize: compact ? 'clamp(0.76rem, 1.35vw, 1.08rem)' : 'clamp(1.05rem, 2.5vw, 1.45rem)',
+            letterSpacing: compact ? '1px' : '2px',
             lineHeight: 1,
+            whiteSpace: 'nowrap',
           }}
         >
           {isLib ? 'LIBERAL' : 'FASCIST'}
         </div>
         <div
           style={{
-            fontSize: compact ? '0.62rem' : '0.72rem',
-            letterSpacing: '2px',
+            fontSize: compact ? 'clamp(0.48rem, 0.9vw, 0.6rem)' : 'clamp(0.58rem, 1.4vw, 0.72rem)',
+            letterSpacing: compact ? '1px' : '2px',
             borderTop: '1px dotted #F5EFE1',
             borderBottom: '1px dotted #F5EFE1',
-            padding: '2px 6px',
-            width: '90%',
+            padding: '2px 3px',
+            width: '92%',
+            whiteSpace: 'nowrap',
           }}
         >
           ARTICLE
@@ -206,9 +212,9 @@ export const PolicyTileArt: React.FC<{
             background: '#262322',
             color: '#E6AF2E',
             fontFamily: 'var(--font-display)',
-            fontSize: '0.85rem',
-            letterSpacing: '1px',
-            padding: '2px 6px',
+            fontSize: 'clamp(0.72rem, 1.8vw, 0.85rem)',
+            letterSpacing: '0.8px',
+            padding: '2px 5px',
             borderRadius: '4px',
           }}
         >

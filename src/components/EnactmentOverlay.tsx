@@ -370,6 +370,7 @@ export const EnactmentOverlay: React.FC<EnactmentOverlayProps> = ({
   }
 
   const isLiberal = event?.policy === 'LIBERAL';
+  const isTvOverlay = mode === 'FULL_TV';
 
   return (
     <div
@@ -377,8 +378,12 @@ export const EnactmentOverlay: React.FC<EnactmentOverlayProps> = ({
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
-        background: event ? 'rgba(12, 10, 9, 0.985)' : 'rgba(16, 14, 13, 0.94)',
-        backdropFilter: 'blur(8px)',
+        background: isTvOverlay
+          ? 'rgba(12, 10, 9, 0.62)'
+          : event
+          ? 'rgba(12, 10, 9, 0.985)'
+          : 'rgba(16, 14, 13, 0.94)',
+        backdropFilter: isTvOverlay ? 'blur(1.5px)' : 'blur(8px)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',

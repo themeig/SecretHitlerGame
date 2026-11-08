@@ -510,15 +510,30 @@ export function useGameSync({
     };
   }, [mode, cleanRoom, sendMessage, stateTopic, eventTopic]);
 
-  // Whenever Controller updates publicState, broadcast immediately to all Fixed Board Phones
+  // Whenever Controller updates publicState, broadcast immediately to all Fixed Board Phones / TV
+  // plus extra reliability bursts on GAME_OVER and a periodic heartbeat so TVs never miss a state transition
   useEffect(() => {
     if (mode !== 'CONTROLLER' || !cleanRoom) return;
-    sendMessage({
-      type: 'STATE_SYNC',
-      roomCode: cleanRoom,
-      publicState,
-      timestamp: Date.now(),
-    });
+    const broadcastNow = () => {
+      sendMessage({
+        type: 'STATE_SYNC',
+        roomCode: cleanRoom,
+        publicState: latestPublicStateRef.current,
+        timestamp: Date.now(),
+      });
+    };
+    broadcastNow();
+
+    const t1 = setTimeout(broadcastNow, 380);
+    const t2 =
+      publicState.phase === 'GAME_OVER' ? setTimeout(broadcastNow, 1200) : null;
+    const heartbeat = setInterval(broadcastNow, 3000);
+
+    return () => {
+      clearTimeout(t1);
+      if (t2) clearTimeout(t2);
+      clearInterval(heartbeat);
+    };
   }, [mode, cleanRoom, publicState, sendMessage]);
 
   const dispatchRemoteAction = useCallback(

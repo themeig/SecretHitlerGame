@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GameAction, GameState, PublicBoardState } from './types/game';
 import { createInitialGameState, gameReducer, toPublicBoardState } from './engine/gameEngine';
 import {
@@ -378,6 +378,9 @@ export const App: React.FC = () => {
     );
     if (activePublicState.phase === 'GAME_OVER') {
       globalLeaderboard.recordFinishedMatch(activePublicState);
+      if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   }, [activePublicState]);
 
@@ -389,6 +392,56 @@ export const App: React.FC = () => {
       : mode === 'BOARD_LIBERAL'
       ? 'LIBERAL_DECK'
       : 'LIBERAL_DECK';
+
+  const [currentBoardTab, setCurrentBoardTab] = useState<BoardScreenTab>(initialBoardTab);
+  const tvVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    setCurrentBoardTab(initialBoardTab);
+  }, [initialBoardTab]);
+
+  const isTvBackgroundActive =
+    mode !== 'HOME' &&
+    (mode === 'BOARD_TV' ||
+      (isBoard && currentBoardTab === 'BOTH') ||
+      ((mode === 'SINGLE' || showBoardOnController) &&
+        activePublicState.phase !== 'SETUP_PLAYERS' &&
+        currentBoardTab === 'BOTH'));
+
+  // Keep TV archival background video continuously playing even when background music / SFX play
+  useEffect(() => {
+    if (!isTvBackgroundActive || typeof window === 'undefined') return;
+
+    const ensureTvVideoPlaying = () => {
+      const video = tvVideoRef.current;
+      if (!video) return;
+      video.muted = true;
+      video.defaultMuted = true;
+      video.volume = 0;
+      video.setAttribute('muted', '');
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+      (video as HTMLVideoElement & { disableRemotePlayback?: boolean }).disableRemotePlayback = true;
+      if (video.paused) {
+        video.play().catch(() => {});
+      }
+    };
+
+    ensureTvVideoPlaying();
+    const unsubMusic = backgroundMusic.subscribe(ensureTvVideoPlaying);
+    window.addEventListener('sh-keep-tv-video-playing', ensureTvVideoPlaying);
+    window.addEventListener('pointerdown', ensureTvVideoPlaying, { passive: true });
+    window.addEventListener('keydown', ensureTvVideoPlaying, { passive: true });
+    const watchdog = setInterval(ensureTvVideoPlaying, 850);
+
+    return () => {
+      unsubMusic();
+      window.removeEventListener('sh-keep-tv-video-playing', ensureTvVideoPlaying);
+      window.removeEventListener('pointerdown', ensureTvVideoPlaying);
+      window.removeEventListener('keydown', ensureTvVideoPlaying);
+      clearInterval(watchdog);
+    };
+  }, [isTvBackgroundActive, musicEnabled, isIntroPlaying, activePublicState.phase]);
 
   if (mode === 'HOME') {
     return (
@@ -417,7 +470,7 @@ export const App: React.FC = () => {
         minBlockSize: '100dvh',
         display: 'flex',
         flexDirection: 'column',
-        maxWidth: isFullscreen ? '100%' : mode === 'BOARD_TV' ? '1480px' : '1140px',
+        maxWidth: isFullscreen ? '100%' : isTvBackgroundActive ? '1480px' : '1140px',
         width: '100%',
         margin: '0 auto',
         padding: isFullscreen ? '4px 6px' : '6px 12px 14px',
@@ -426,6 +479,60 @@ export const App: React.FC = () => {
         zIndex: 1,
       }}
     >
+      {/* Persistent Silent Black & White WWII Archival Background Video in TV Mode (always behind UI & Victory screen, never paused by audio) */}
+      {isTvBackgroundActive && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 0,
+            pointerEvents: 'none',
+            overflow: 'hidden',
+            backgroundColor: '#0D0C0B',
+          }}
+        >
+          <video
+            ref={tvVideoRef}
+            src="/video/ww2_tv_bg.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            disablePictureInPicture
+            onLoadedData={e => {
+              const v = e.currentTarget;
+              v.muted = true;
+              v.defaultMuted = true;
+              v.volume = 0;
+              v.play().catch(() => {});
+            }}
+            onPause={e => {
+              const v = e.currentTarget;
+              v.muted = true;
+              v.defaultMuted = true;
+              v.volume = 0;
+              v.play().catch(() => {});
+            }}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              filter: 'grayscale(100%) contrast(1.22) brightness(0.68)',
+              opacity: 0.62,
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background:
+                'radial-gradient(circle at center, rgba(18, 16, 15, 0.25) 0%, rgba(12, 11, 10, 0.78) 100%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 1px, transparent 1px, transparent 3px)',
+            }}
+          />
+        </div>
+      )}
+
       {/* Sleek Horizontal Top Header (hidden in Fullscreen mode on Fixed Phones so the board fills 100% of screen) */}
       {!(isBoard && isFullscreen) && (
         <header
@@ -437,6 +544,8 @@ export const App: React.FC = () => {
             flexWrap: 'wrap',
             borderBottom: '2px solid #3B3634',
             paddingBottom: '6px',
+            position: 'relative',
+            zIndex: 2,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -584,20 +693,32 @@ export const App: React.FC = () => {
       )}
 
       {/* Main Content */}
-      <main style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
-        {/* FIXED BOARD PHONES (Telefono Fisso 1: Liberale+Mazzo, Telefono Fisso 2: Fascista+Giocatori) */}
+      <main
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          flex: 1,
+          position: 'relative',
+          zIndex: 2,
+        }}
+      >
+        {/* FIXED BOARD PHONES & TV (Telefono Fisso 1: Liberale+Mazzo, Telefono Fisso 2: Fascista+Giocatori, TV) */}
         {isBoard && (
           <>
             {activePublicState.phase === 'GAME_OVER' && (
-              <GameOverScreen
-                publicState={activePublicState}
-                onAction={triggerAction}
-                onOpenLeaderboard={() => setShowLeaderboardModal(true)}
-              />
+              <div style={{ position: 'relative', zIndex: 5 }}>
+                <GameOverScreen
+                  publicState={activePublicState}
+                  onAction={triggerAction}
+                  onOpenLeaderboard={() => setShowLeaderboardModal(true)}
+                />
+              </div>
             )}
             <GameBoard
               publicState={activePublicState}
               initialTab={initialBoardTab}
+              onTabChange={setCurrentBoardTab}
               isFixedBoardPhone
               roomCode={roomCode}
               connectedPeers={connectedPeers}
@@ -629,11 +750,13 @@ export const App: React.FC = () => {
               )}
 
             {gameState.phase === 'GAME_OVER' && (
-              <GameOverScreen
-                publicState={localPublicState}
-                onAction={handleDispatch}
-                onOpenLeaderboard={() => setShowLeaderboardModal(true)}
-              />
+              <div style={{ position: 'relative', zIndex: 5 }}>
+                <GameOverScreen
+                  publicState={localPublicState}
+                  onAction={handleDispatch}
+                  onOpenLeaderboard={() => setShowLeaderboardModal(true)}
+                />
+              </div>
             )}
 
             {(mode === 'SINGLE' || showBoardOnController) &&
@@ -641,6 +764,7 @@ export const App: React.FC = () => {
                 <GameBoard
                   publicState={localPublicState}
                   initialTab="BOTH"
+                  onTabChange={setCurrentBoardTab}
                   roomCode={roomCode}
                   connectedPeers={connectedPeers}
                 />
